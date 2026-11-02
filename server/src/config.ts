@@ -7,4 +7,6 @@ export const serverConfig = {
   pageCloseGraceMs: 5_000,
   // Room messages are small, so anything larger is rejected.
   maxMessageBytes: 10_000,
+  // How often the movement of each room's players is sent out.
+  poseBroadcastHz: 15,
 } as const

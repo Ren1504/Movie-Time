@@ -15,13 +15,15 @@ import {
 } from '../../components/theatre/theatreLayout'
 import { playerConfig } from '../../config/playerConfig'
 import { seatConfig } from '../../config/seatConfig'
+import { REQUEST_TIMEOUT_MS, socket } from '../../network/socket'
+import { localSeat, occupiedSeatIds } from './seatOccupancy'
 
 export type SeatPrompt = 'sit' | 'stand'
 
-type SeatMode = 'walking' | 'sitting' | 'seated' | 'standing'
+type SeatMode = 'walking' | 'claiming' | 'sitting' | 'seated' | 'standing'
 
-/** Seats taken by someone. Only the local player until multiplayer arrives. */
-export const occupiedSeatIds = new Set<string>()
+const SEAT_TAKEN_MESSAGE = 'Someone just took that seat.'
+const SEAT_FAILED_MESSAGE = "Couldn't take that seat. Try again."
 
 const WORLD_UP = new Vector3(0, 1, 0)
 const STAND_CLEARANCE = 0.02
@@ -54,11 +56,13 @@ function findNearestAvailableSeat(x: number, z: number): Seat | null {
 export function useSeatInteraction(
   highlightRef: RefObject<Mesh | null>,
   onPromptChange: (prompt: SeatPrompt | null) => void,
+  onSeatDenied: (message: string) => void,
 ) {
   const stateRef = useRef({
     mode: 'walking' as SeatMode,
     focusedSeat: null as Seat | null,
     currentSeat: null as Seat | null,
+    approvedSeat: null as Seat | null,
     prompt: null as SeatPrompt | null,
     interactPressed: false,
     progress: 0,
@@ -78,13 +82,12 @@ export function useSeatInteraction(
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Leaving the theatre must not keep the seat taken.
-  useEffect(() => {
-    const state = stateRef.current
-    return () => {
-      if (state.currentSeat) occupiedSeatIds.delete(state.currentSeat.id)
-    }
-  }, [])
+  useEffect(
+    () => () => {
+      localSeat.id = null
+    },
+    [],
+  )
 
   const setPrompt = (prompt: SeatPrompt | null) => {
     const state = stateRef.current
@@ -117,10 +120,34 @@ export function useSeatInteraction(
       setFocusedSeat(seat)
       if (!interact || !seat) return true
 
-      const [seatX, seatY, seatZ] = seat.position
-      occupiedSeatIds.add(seat.id)
-      state.currentSeat = seat
+      // The server decides, as someone else may be taking this seat right now.
+      state.mode = 'claiming'
       setFocusedSeat(null)
+      socket
+        .timeout(REQUEST_TIMEOUT_MS)
+        .emit('seat:claim', { seatId: seat.id }, (error, result) => {
+          if (!error && result.ok) {
+            state.approvedSeat = seat
+            return
+          }
+          state.mode = 'walking'
+          onSeatDenied(
+            !error && !result.ok && result.error === 'SEAT_TAKEN'
+              ? SEAT_TAKEN_MESSAGE
+              : SEAT_FAILED_MESSAGE,
+          )
+        })
+      return false
+    }
+
+    if (state.mode === 'claiming') {
+      const seat = state.approvedSeat
+      if (!seat) return false
+
+      const [seatX, seatY, seatZ] = seat.position
+      state.approvedSeat = null
+      state.currentSeat = seat
+      localSeat.id = seat.id
       state.mode = 'sitting'
       state.progress = 0
       state.fromPosition.copy(camera.position)
@@ -138,7 +165,8 @@ export function useSeatInteraction(
     if (state.mode === 'seated') {
       if (interact && state.currentSeat) {
         const [x, y, z] = state.currentSeat.standPosition
-        occupiedSeatIds.delete(state.currentSeat.id)
+        socket.emit('seat:release')
+        localSeat.id = null
         state.currentSeat = null
         // The body waits here so the view can glide to it, and then walking resumes.
         body.setTranslation(

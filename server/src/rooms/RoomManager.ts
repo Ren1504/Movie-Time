@@ -3,10 +3,16 @@ import {
   MAX_NAME_LENGTH,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
+  isValidSeatId,
   type MemberDeparture,
+  type PlayerPose,
   type RoomResult,
   type RoomSnapshot,
 } from '@movie/shared'
+
+// Well beyond the theatre, and only there to reject nonsense values.
+const MAX_POSE_COORDINATE = 100
+const MAX_POSE_ANGLE = 7
 
 interface Member {
   id: string
@@ -14,6 +20,9 @@ interface Member {
   name: string
   /** Null while the member is disconnected. */
   socketId: string | null
+  seatId: string | null
+  pose: PlayerPose | null
+  poseChanged: boolean
 }
 
 interface Room {
@@ -87,6 +96,49 @@ export class RoomManager {
     return this.rooms.get(code)?.ownerId === memberId
   }
 
+  /** A seat holds one person, and a person holds one seat. */
+  claimSeat(code: string, memberId: string, rawSeatId: unknown): RoomResult<null> {
+    const room = this.rooms.get(code)
+    const member = room?.members.get(memberId)
+    if (!room || !member) return { ok: false, error: 'NOT_IN_ROOM' }
+    if (!isValidSeatId(rawSeatId)) return { ok: false, error: 'INVALID_SEAT' }
+    for (const other of room.members.values()) {
+      if (other !== member && other.seatId === rawSeatId) {
+        return { ok: false, error: 'SEAT_TAKEN' }
+      }
+    }
+    member.seatId = rawSeatId
+    return { ok: true, value: null }
+  }
+
+  releaseSeat(code: string, memberId: string): void {
+    const member = this.getMember(code, memberId)
+    if (member) member.seatId = null
+  }
+
+  updatePose(code: string, memberId: string, rawPose: unknown): void {
+    const member = this.getMember(code, memberId)
+    if (!member || !isValidPose(rawPose)) return
+    const { x, z, yaw, pitch } = rawPose
+    member.pose = { x, z, yaw, pitch }
+    member.poseChanged = true
+  }
+
+  /** Returns each room's moved members, and marks them as sent. */
+  takeChangedPoses(): { code: string; poses: (PlayerPose & { id: string })[] }[] {
+    const changes = []
+    for (const room of this.rooms.values()) {
+      const poses = []
+      for (const member of room.members.values()) {
+        if (!member.poseChanged || !member.pose) continue
+        member.poseChanged = false
+        poses.push({ id: member.id, ...member.pose })
+      }
+      if (poses.length > 0) changes.push({ code: room.code, poses })
+    }
+    return changes
+  }
+
   /**
    * Removes a member. If it was the owner, ownership passes to whoever has been
    * in the room longest, preferring someone who is connected right now. A room
@@ -124,10 +176,12 @@ export class RoomManager {
       code,
       ownerId: room.ownerId,
       // Built field by field, so tokens can never reach other members.
-      members: [...room.members.values()].map(({ id, name, socketId }) => ({
+      members: [...room.members.values()].map(({ id, name, socketId, seatId, pose }) => ({
         id,
         name,
         connected: socketId !== null,
+        seatId,
+        pose,
       })),
     }
   }
@@ -145,7 +199,30 @@ export class RoomManager {
 }
 
 function createMember(name: string, socketId: string): Member {
-  return { id: randomUUID(), token: randomUUID(), name, socketId }
+  return {
+    id: randomUUID(),
+    token: randomUUID(),
+    name,
+    socketId,
+    seatId: null,
+    pose: null,
+    poseChanged: false,
+  }
+}
+
+function isInRange(value: unknown, limit: number): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit
+}
+
+function isValidPose(value: unknown): value is PlayerPose {
+  if (typeof value !== 'object' || value === null) return false
+  const { x, z, yaw, pitch } = value as Record<string, unknown>
+  return (
+    isInRange(x, MAX_POSE_COORDINATE) &&
+    isInRange(z, MAX_POSE_COORDINATE) &&
+    isInRange(yaw, MAX_POSE_ANGLE) &&
+    isInRange(pitch, MAX_POSE_ANGLE)
+  )
 }
 
 function parseName(value: unknown): string | null {

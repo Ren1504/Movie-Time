@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import type { RoomMember } from '@movie/shared'
 import type { SeatPrompt } from '../../systems/seats/useSeatInteraction'
 import type { PlayerControllerHandle } from '../player/PlayerController'
 import { SeatPromptLabel } from '../ui/SeatPromptLabel'
@@ -10,22 +11,42 @@ type GameState = 'start' | 'playing' | 'paused'
 const LOCK_ERROR_NOTICE =
   "Your browser didn't release the mouse yet. Wait a moment and try again."
 
+// After Esc, browsers refuse to capture the mouse again for a little over a second.
+const RELOCK_COOLDOWN_MS = 1500
+
 interface TheatreViewProps {
+  members: RoomMember[]
+  localMemberId: string
+  onSeatDenied: (message: string) => void
   /** Renders room details, which can only be clicked when the mouse is free. */
   renderRoomPanel: (interactive: boolean) => ReactNode
 }
 
-export function TheatreView({ renderRoomPanel }: TheatreViewProps) {
+export function TheatreView({
+  members,
+  localMemberId,
+  onSeatDenied,
+  renderRoomPanel,
+}: TheatreViewProps) {
   const playerRef = useRef<PlayerControllerHandle>(null)
   const [gameState, setGameState] = useState<GameState>('start')
   const [playerReady, setPlayerReady] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [seatPrompt, setSeatPrompt] = useState<SeatPrompt | null>(null)
 
+  const [resumeBlocked, setResumeBlocked] = useState(false)
+
   const handleLockChange = useCallback((locked: boolean) => {
     setGameState(locked ? 'playing' : 'paused')
+    setResumeBlocked(!locked)
     if (locked) setNotice(null)
   }, [])
+
+  useEffect(() => {
+    if (!resumeBlocked) return
+    const timer = setTimeout(() => setResumeBlocked(false), RELOCK_COOLDOWN_MS)
+    return () => clearTimeout(timer)
+  }, [resumeBlocked])
 
   const handleLockError = useCallback(() => setNotice(LOCK_ERROR_NOTICE), [])
   const handlePlayerReady = useCallback(() => setPlayerReady(true), [])
@@ -42,6 +63,9 @@ export function TheatreView({ renderRoomPanel }: TheatreViewProps) {
     <>
       <SceneCanvas
         playerRef={playerRef}
+        members={members}
+        localMemberId={localMemberId}
+        onSeatDenied={onSeatDenied}
         onPlayerReady={handlePlayerReady}
         onLockChange={handleLockChange}
         onLockError={handleLockError}
@@ -60,7 +84,7 @@ export function TheatreView({ renderRoomPanel }: TheatreViewProps) {
                 ? 'Enter Theatre'
                 : 'Resume'
           }
-          actionDisabled={!playerReady}
+          actionDisabled={!playerReady || resumeBlocked}
           notice={notice}
           onAction={handleEnter}
         />

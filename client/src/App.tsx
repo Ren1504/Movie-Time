@@ -11,6 +11,7 @@ function App() {
     busy,
     notice,
     announcement,
+    announce,
     createRoom,
     joinRoom,
     leaveRoom,
@@ -40,6 +41,9 @@ function App() {
   return (
     <>
       <TheatreView
+        members={current.room.members}
+        localMemberId={current.memberId}
+        onSeatDenied={announce}
         renderRoomPanel={(interactive) => (
           <RoomPanel
             room={current.room}

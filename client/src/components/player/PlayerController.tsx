@@ -10,6 +10,7 @@ import {
 import { MathUtils, Vector3, type Mesh } from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import { playerConfig } from '../../config/playerConfig'
+import { usePoseSender } from '../../systems/multiplayer/usePoseSender'
 import {
   useSeatInteraction,
   type SeatPrompt,
@@ -32,6 +33,7 @@ interface PlayerControllerProps {
   onLockChange: (locked: boolean) => void
   onLockError: () => void
   onSeatPromptChange: (prompt: SeatPrompt | null) => void
+  onSeatDenied: (message: string) => void
 }
 
 const { bodyHeight, bodyRadius } = playerConfig
@@ -54,13 +56,19 @@ export function PlayerController({
   onLockChange,
   onLockError,
   onSeatPromptChange,
+  onSeatDenied,
 }: PlayerControllerProps) {
   const camera = useThree((state) => state.camera)
   const canvas = useThree((state) => state.gl.domElement)
   const { world } = useRapier()
   const pressedRef = useMovementKeys()
   const seatHighlightRef = useRef<Mesh>(null)
-  const updateSeating = useSeatInteraction(seatHighlightRef, onSeatPromptChange)
+  const updateSeating = useSeatInteraction(
+    seatHighlightRef,
+    onSeatPromptChange,
+    onSeatDenied,
+  )
+  const sendPose = usePoseSender()
   const controlsRef = useRef<PointerLockControls>(null)
   const bodyRef = useRef<RapierRigidBody>(null)
   const colliderRef = useRef<RapierCollider>(null)
@@ -129,6 +137,7 @@ export function PlayerController({
     if (!controls?.isLocked || !body || !collider || !character) return
 
     const delta = Math.min(frameDelta, playerConfig.maxFrameDelta)
+    sendPose(state.camera, body, delta)
     if (!updateSeating(state.camera, body, delta)) {
       velocityRef.current = { forward: 0, right: 0, vertical: 0 }
       return

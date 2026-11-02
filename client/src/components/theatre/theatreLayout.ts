@@ -176,6 +176,13 @@ export const seats: Seat[] = Array.from({ length: seating.rows }, (_, row) =>
 ).flat()
 
 export const seatPositions: Vec3[] = seats.map((seat) => seat.position)
+export const seatsById = new Map(seats.map((seat) => [seat.id, seat]))
+
+/** Height of the drawn stepped floor, unlike the smooth slope players walk on. */
+export function drawnFloorY(z: number): number {
+  const row = Math.floor((z - rowFrontZ(0)) / seating.rowDepth)
+  return rowFloorY(MathUtils.clamp(row, 0, lastRow))
+}
 
 export const collisionBoxes: Box[] = [
   floorColliderBox,
@@ -186,7 +193,14 @@ export const collisionBoxes: Box[] = [
   stageColliderBox,
 ]
 
-export const spawnPosition: Vec3 = [0, rearFloorY, backZ - 1.5]
+const SPAWN_SPACING = 1
+
+/** Spreads players along the rear walkway, as 0, +1, -1, +2, -2 metres and so on. */
+export function spawnPositionFor(slot: number): Vec3 {
+  const offset = Math.ceil(slot / 2) * (slot % 2 === 1 ? 1 : -1)
+  return [offset * SPAWN_SPACING, rearFloorY, backZ - 1.5]
+}
+
 export const spawnLookAt: Vec3 = [
   0,
   theatreConfig.screen.bottomY + theatreConfig.screen.height / 2,

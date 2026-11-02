@@ -65,12 +65,39 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
     }
   }
 
+  setInterval(() => {
+    for (const { code, poses } of rooms.takeChangedPoses()) {
+      io.to(code).volatile.emit('players:poses', poses)
+    }
+  }, 1000 / serverConfig.poseBroadcastHz)
+
   io.on('connection', (socket) => {
     socket.data.session = null
     socket.data.pageClosing = false
 
     socket.on('room:page-closing', () => {
       socket.data.pageClosing = true
+    })
+
+    socket.on('player:pose', (pose) => {
+      const session = socket.data.session
+      if (session) rooms.updatePose(session.code, session.memberId, pose)
+    })
+
+    socket.on('seat:claim', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const session = socket.data.session
+      if (!session) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      const result = rooms.claimSeat(session.code, session.memberId, payload?.seatId)
+      ack(result)
+      if (result.ok) broadcastRoom(session.code)
+    })
+
+    socket.on('seat:release', () => {
+      const session = socket.data.session
+      if (!session) return
+      rooms.releaseSeat(session.code, session.memberId)
+      broadcastRoom(session.code)
     })
 
     socket.on('room:create', (payload, ack) => {
@@ -85,6 +112,9 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       if (socket.data.session) return ack({ ok: false, error: 'ALREADY_IN_ROOM' })
       const result = rooms.joinRoom(payload?.code, payload?.name, socket.id)
       ack(result.ok ? { ok: true, value: enterRoom(socket, result.value) } : result)
+      if (result.ok) {
+        socket.to(result.value.code).emit('room:member-joined', result.value.member.name)
+      }
     })
 
     socket.on('room:rejoin', (payload, ack) => {
@@ -102,6 +132,7 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
         detachSocket(previous.id, code)
       }
       member.socketId = socket.id
+      if (payload.keepSeat !== true) member.seatId = null
       ack({ ok: true, value: enterRoom(socket, entry) })
     })
 

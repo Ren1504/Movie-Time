@@ -1,3 +1,5 @@
+import { SEATS_PER_BLOCK, SEAT_ROWS } from '@movie/shared'
+
 // Dimensions are in metres. Derived positions live in theatre/theatreLayout.ts.
 
 export const theatreConfig = {
@@ -9,8 +11,8 @@ export const theatreConfig = {
     wallThickness: 0.3,
   },
   seating: {
-    rows: 5,
-    seatsPerBlock: 16,
+    rows: SEAT_ROWS,
+    seatsPerBlock: SEATS_PER_BLOCK,
     seatPitch: 0.6,
     rowDepth: 1.6,
     rowRise: 0.35,

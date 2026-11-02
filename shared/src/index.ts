@@ -6,11 +6,35 @@ export const ROOM_CODE_LENGTH = 6
 // Letters and digits that are easy to tell apart when read out loud.
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
+// Seats are named like "R3-L07": row 3, left block, seat 7.
+export const SEAT_ROWS = 5
+export const SEATS_PER_BLOCK = 16
+
+export function isValidSeatId(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = /^R(\d)-[LR](\d\d)$/.exec(value)
+  if (!match) return false
+  const row = Number(match[1])
+  const seat = Number(match[2])
+  return row >= 1 && row <= SEAT_ROWS && seat >= 1 && seat <= SEATS_PER_BLOCK
+}
+
+/** Where a player is and which way they're looking. Height comes from the floor. */
+export interface PlayerPose {
+  x: number
+  z: number
+  yaw: number
+  pitch: number
+}
+
 export interface RoomMember {
   id: string
   name: string
   /** False during the short wait for a dropped member to come back. */
   connected: boolean
+  seatId: string | null
+  /** Null until the member has first moved. */
+  pose: PlayerPose | null
 }
 
 export interface RoomSnapshot {
@@ -35,6 +59,8 @@ export type RoomErrorCode =
   | 'NOT_IN_ROOM'
   | 'NOT_OWNER'
   | 'SESSION_EXPIRED'
+  | 'INVALID_SEAT'
+  | 'SEAT_TAKEN'
 
 export type RoomResult<T> =
   | { ok: true; value: T }
@@ -58,7 +84,8 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<RoomSession>) => void,
   ) => void
   'room:rejoin': (
-    payload: { token: string },
+    /** keepSeat is false after a refresh, as the player restarts on their feet. */
+    payload: { token: string; keepSeat: boolean },
     ack: (result: RoomResult<RoomSession>) => void,
   ) => void
   'room:leave': (ack: (result: RoomResult<null>) => void) => void
@@ -66,10 +93,19 @@ export interface ClientToServerEvents {
   'room:close': (ack: (result: RoomResult<null>) => void) => void
   /** The page is closing or reloading, so this disconnect isn't a network drop. */
   'room:page-closing': () => void
+  'player:pose': (pose: PlayerPose) => void
+  'seat:claim': (
+    payload: { seatId: string },
+    ack: (result: RoomResult<null>) => void,
+  ) => void
+  'seat:release': () => void
 }
 
 export interface ServerToClientEvents {
   'room:updated': (room: RoomSnapshot) => void
   'room:ended': (reason: RoomEndReason) => void
   'room:member-left': (departure: MemberDeparture) => void
+  'room:member-joined': (name: string) => void
+  /** Only the members who moved since the last update. */
+  'players:poses': (poses: (PlayerPose & { id: string })[]) => void
 }
