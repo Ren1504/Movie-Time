@@ -1,19 +1,44 @@
-import { sceneConfig } from '../../config/sceneConfig'
+import { theatreConfig } from '../../config/theatreConfig'
+import { createBoxBatch } from '../../utils/boxBatch'
+import { createFabricTexture } from '../../utils/proceduralTextures'
+import { StaticInstances } from './StaticInstances'
+import {
+  aisleCarpetBoxes,
+  seatingCarpetBoxes,
+  stepLightPositions,
+} from './theatreLayout'
 
-const { size, color, gridColor, gridSubColor } = sceneConfig.floor
+const { colors } = theatreConfig
+
+const seatingCarpet = createBoxBatch(seatingCarpetBoxes)
+const aisleCarpet = createBoxBatch(aisleCarpetBoxes)
+const carpetTexture = createFabricTexture(0.45, 2)
+const stepLight = createBoxBatch([{ center: [0, 0, 0], size: [0.22, 0.03, 0.01] }])
 
 export function TheatreFloor() {
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[size, size]} />
-        <meshStandardMaterial color={color} />
+      <mesh geometry={seatingCarpet} receiveShadow>
+        <meshStandardMaterial
+          color={colors.carpet}
+          map={carpetTexture}
+          bumpMap={carpetTexture}
+          bumpScale={0.6}
+          roughness={1}
+        />
       </mesh>
-      {/* One grid cell = 1 metre. Raised slightly to avoid z-fighting with the floor. */}
-      <gridHelper
-        args={[size, size, gridColor, gridSubColor]}
-        position={[0, 0.002, 0]}
-      />
+      <mesh geometry={aisleCarpet} receiveShadow>
+        <meshStandardMaterial
+          color={colors.aisleCarpet}
+          map={carpetTexture}
+          bumpMap={carpetTexture}
+          bumpScale={0.6}
+          roughness={1}
+        />
+      </mesh>
+      <StaticInstances geometry={stepLight} positions={stepLightPositions}>
+        <meshBasicMaterial color={colors.warmEmissive} toneMapped={false} />
+      </StaticInstances>
     </group>
   )
 }

@@ -8,6 +8,38 @@ body,
   background: #14100f;
 }
 
+.viewpoint-picker {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+}
+
+.viewpoint-picker button {
+  padding: 8px 12px;
+  border: 1px solid #ffffff33;
+  border-radius: 6px;
+  background: #0d0a09cc;
+  color: #f2e6d8;
+  font: 13px system-ui, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+}
+
+.viewpoint-picker button:hover {
+  background: #2a1e1acc;
+}
+
+.viewpoint-picker button[aria-pressed='true'] {
+  border-color: #ffb56b;
+  color: #ffb56b;
+}
+
 .webgl-fallback {
   padding: 2rem;
   color: #f2e6d8;
