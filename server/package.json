@@ -1,0 +1,23 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --noEmit",
+    "lint": "oxlint src"
+  },
+  "dependencies": {
+    "@movie/shared": "*",
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.19.2",
+    "oxlint": "^1.89.0",
+    "tsx": "^4.20.3",
+    "typescript": "~7.0.2"
+  }
+}

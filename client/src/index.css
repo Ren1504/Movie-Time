@@ -77,6 +77,139 @@ body,
   font-size: 13px;
 }
 
+.theatre-overlay button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.theatre-overlay button.secondary {
+  background: #ffffff1a;
+}
+
+.room-field {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.room-field input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid #ffffff33;
+  border-radius: 8px;
+  background: #00000066;
+  color: inherit;
+  font: 16px system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+.room-code-input {
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.room-divider {
+  margin: 20px 0 16px;
+  color: #f2e6d899;
+  font-size: 13px;
+}
+
+/* Above the pause overlay, so its buttons can be clicked. */
+.room-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  width: 220px;
+  padding: 12px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #120d0ccc;
+  color: #f2e6d8;
+  font: 14px system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+.room-panel-code {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.room-panel-code strong {
+  color: #ffb56b;
+  letter-spacing: 0.1em;
+}
+
+.room-panel-code button {
+  width: auto;
+  margin: 0 0 0 auto;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.room-panel ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-panel li {
+  padding: 3px 0;
+  overflow-wrap: anywhere;
+}
+
+.room-member-away {
+  opacity: 0.55;
+}
+
+.room-owner-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid #ffb56b;
+  border-radius: 4px;
+  color: #ffb56b;
+  font-size: 11px;
+}
+
+.room-panel p {
+  margin: 8px 0 0;
+  color: #ffb56b;
+  font-size: 13px;
+}
+
+.room-panel button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #ffffff1a;
+  color: #fff;
+  font: 600 13px system-ui, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+}
+
+.room-panel button:hover {
+  background: #ffffff33;
+}
+
+.room-announcement {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #120d0ccc;
+  color: #f2e6d8;
+  font: 500 15px system-ui, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: none;
+}
+
 .seat-prompt {
   position: fixed;
   bottom: 12%;

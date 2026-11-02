@@ -1,61 +1,60 @@
-import { useCallback, useRef, useState } from 'react'
-import type { PlayerControllerHandle } from './components/player/PlayerController'
-import { SceneCanvas } from './components/scene/SceneCanvas'
-import { SeatPromptLabel } from './components/ui/SeatPromptLabel'
-import { TheatreOverlay } from './components/ui/TheatreOverlay'
-import type { SeatPrompt } from './systems/seats/useSeatInteraction'
-
-type GameState = 'start' | 'playing' | 'paused'
-
-const LOCK_ERROR_NOTICE =
-  "Your browser didn't release the mouse yet. Wait a moment and try again."
+import { TheatreView } from './components/scene/TheatreView'
+import { RoomLobby } from './components/ui/RoomLobby'
+import { RoomPanel } from './components/ui/RoomPanel'
+import { useRoom } from './network/useRoom'
 
 function App() {
-  const playerRef = useRef<PlayerControllerHandle>(null)
-  const [gameState, setGameState] = useState<GameState>('start')
-  const [playerReady, setPlayerReady] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [seatPrompt, setSeatPrompt] = useState<SeatPrompt | null>(null)
+  const {
+    current,
+    connected,
+    restoring,
+    busy,
+    notice,
+    announcement,
+    createRoom,
+    joinRoom,
+    leaveRoom,
+    closeRoom,
+  } = useRoom()
 
-  const handleLockChange = useCallback((locked: boolean) => {
-    setGameState(locked ? 'playing' : 'paused')
-    if (locked) setNotice(null)
-  }, [])
+  if (restoring) {
+    return (
+      <div className="theatre-overlay">
+        <p role="status">Returning to your room...</p>
+      </div>
+    )
+  }
 
-  const handleLockError = useCallback(() => setNotice(LOCK_ERROR_NOTICE), [])
-  const handlePlayerReady = useCallback(() => setPlayerReady(true), [])
-
-  const handleEnter = () => {
-    setNotice(null)
-    playerRef.current?.lock()
+  if (!current) {
+    return (
+      <RoomLobby
+        connected={connected}
+        busy={busy}
+        notice={notice}
+        onCreate={createRoom}
+        onJoin={joinRoom}
+      />
+    )
   }
 
   return (
     <>
-      <SceneCanvas
-        playerRef={playerRef}
-        onPlayerReady={handlePlayerReady}
-        onLockChange={handleLockChange}
-        onLockError={handleLockError}
-        onSeatPromptChange={setSeatPrompt}
+      <TheatreView
+        renderRoomPanel={(interactive) => (
+          <RoomPanel
+            room={current.room}
+            memberId={current.memberId}
+            connected={connected}
+            interactive={interactive}
+            onLeave={leaveRoom}
+            onClose={closeRoom}
+          />
+        )}
       />
-      {gameState === 'playing' && seatPrompt && (
-        <SeatPromptLabel prompt={seatPrompt} />
-      )}
-      {gameState !== 'playing' && (
-        <TheatreOverlay
-          title={gameState === 'start' ? 'Movie With Friends' : 'Paused'}
-          actionLabel={
-            !playerReady
-              ? 'Loading...'
-              : gameState === 'start'
-                ? 'Enter Theatre'
-                : 'Resume'
-          }
-          actionDisabled={!playerReady}
-          notice={notice}
-          onAction={handleEnter}
-        />
+      {announcement && (
+        <div className="room-announcement" role="status">
+          {announcement}
+        </div>
       )}
     </>
   )
