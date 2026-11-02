@@ -4,7 +4,7 @@ import type { Box, Vec3 } from '../../utils/boxBatch'
 // Pure layout data derived from the config, with no rendering code.
 // Keeping it here lets later phases (collision, seat interaction) reuse it.
 
-const { room, seating, door } = theatreConfig
+const { room, seating, door, stage } = theatreConfig
 
 export const halfWidth = room.width / 2
 export const frontZ = room.screenWallZ
@@ -92,3 +92,26 @@ export const stepLightPositions: Vec3[] = raisedRows.flatMap((row) =>
 export const doorCenters: Vec3[] = [-sideAisleCenterX, sideAisleCenterX].map(
   (x): Vec3 => [x, rearFloorY + door.height / 2, backZ],
 )
+
+const WALL_CLEARANCE = 0.4
+
+export const movementBounds = {
+  minX: -halfWidth + WALL_CLEARANCE,
+  maxX: halfWidth - WALL_CLEARANCE,
+  minZ: frontZ + WALL_CLEARANCE,
+  maxZ: backZ - WALL_CLEARANCE,
+}
+
+// Temporary until Phase 4: physics replaces this floor height lookup.
+export function getFloorHeight(_x: number, z: number): number {
+  if (z < frontZ + stage.depth) return stage.height
+  const row = Math.floor((z - rowFrontZ(0)) / seating.rowDepth)
+  return rowFloorY(Math.min(Math.max(row, 0), lastRow))
+}
+
+export const spawnPosition: Vec3 = [0, rearFloorY, backZ - 1.5]
+export const spawnLookAt: Vec3 = [
+  0,
+  theatreConfig.screen.bottomY + theatreConfig.screen.height / 2,
+  frontZ,
+]

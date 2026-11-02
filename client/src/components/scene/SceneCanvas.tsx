@@ -1,8 +1,17 @@
+import type { Ref } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { sceneConfig } from '../../config/sceneConfig'
-import { InspectionCamera } from '../debug/InspectionCamera'
-import type { Viewpoint } from '../debug/viewpoints'
+import {
+  PlayerController,
+  type PlayerControllerHandle,
+} from '../player/PlayerController'
 import { Theatre } from '../theatre/Theatre'
+import {
+  getFloorHeight,
+  movementBounds,
+  spawnLookAt,
+  spawnPosition,
+} from '../theatre/theatreLayout'
 
 const webglFallback = (
   <p className="webgl-fallback">
@@ -11,7 +20,17 @@ const webglFallback = (
   </p>
 )
 
-export function SceneCanvas({ viewpoint }: { viewpoint: Viewpoint }) {
+interface SceneCanvasProps {
+  playerRef: Ref<PlayerControllerHandle>
+  onLockChange: (locked: boolean) => void
+  onLockError: () => void
+}
+
+export function SceneCanvas({
+  playerRef,
+  onLockChange,
+  onLockError,
+}: SceneCanvasProps) {
   return (
     <Canvas
       camera={{ ...sceneConfig.camera }}
@@ -26,7 +45,15 @@ export function SceneCanvas({ viewpoint }: { viewpoint: Viewpoint }) {
     >
       <color attach="background" args={[sceneConfig.background]} />
       <Theatre />
-      <InspectionCamera viewpoint={viewpoint} />
+      <PlayerController
+        ref={playerRef}
+        spawnPosition={spawnPosition}
+        spawnLookAt={spawnLookAt}
+        bounds={movementBounds}
+        getFloorHeight={getFloorHeight}
+        onLockChange={onLockChange}
+        onLockError={onLockError}
+      />
     </Canvas>
   )
 }

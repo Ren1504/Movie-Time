@@ -8,36 +8,73 @@ body,
   background: #14100f;
 }
 
-.viewpoint-picker {
+.theatre-overlay {
   position: fixed;
-  left: 50%;
-  bottom: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  width: max-content;
-  max-width: calc(100vw - 32px);
-  transform: translateX(-50%);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: #050404a6;
+  color: #f2e6d8;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
 }
 
-.viewpoint-picker button {
-  padding: 8px 12px;
-  border: 1px solid #ffffff33;
-  border-radius: 6px;
-  background: #0d0a09cc;
-  color: #f2e6d8;
-  font: 13px system-ui, 'Segoe UI', Roboto, sans-serif;
+.theatre-overlay-panel {
+  width: min(360px, 100%);
+  padding: 32px;
+  box-sizing: border-box;
+  border: 1px solid #ffffff22;
+  border-radius: 12px;
+  background: #120d0ce6;
+  text-align: center;
+}
+
+.theatre-overlay h1 {
+  margin: 0 0 24px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.theatre-overlay dl {
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+
+.theatre-overlay dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #ffffff14;
+}
+
+.theatre-overlay dt {
+  color: #ffb56b;
+  font-weight: 600;
+}
+
+.theatre-overlay dd {
+  margin: 0;
+}
+
+.theatre-overlay button {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #8e1420;
+  color: #fff;
+  font: 600 16px system-ui, 'Segoe UI', Roboto, sans-serif;
   cursor: pointer;
 }
 
-.viewpoint-picker button:hover {
-  background: #2a1e1acc;
+.theatre-overlay button:hover {
+  background: #a81a28;
 }
 
-.viewpoint-picker button[aria-pressed='true'] {
-  border-color: #ffb56b;
+.theatre-overlay p {
+  margin: 16px 0 0;
   color: #ffb56b;
+  font-size: 13px;
 }
 
 .webgl-fallback {
