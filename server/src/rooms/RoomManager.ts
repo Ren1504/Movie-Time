@@ -29,6 +29,7 @@ interface Room {
   code: string
   ownerId: string
   members: Map<string, Member>
+  streaming: boolean
 }
 
 export interface MemberEntry {
@@ -55,6 +56,7 @@ export class RoomManager {
       code,
       ownerId: member.id,
       members: new Map([[member.id, member]]),
+      streaming: false,
     })
     return { ok: true, value: { code, member } }
   }
@@ -94,6 +96,15 @@ export class RoomManager {
 
   isOwner(code: string, memberId: string): boolean {
     return this.rooms.get(code)?.ownerId === memberId
+  }
+
+  /** Only the current owner can change whether the room is streaming. */
+  setStreaming(code: string, memberId: string, streaming: boolean): RoomResult<null> {
+    const room = this.rooms.get(code)
+    if (!room?.members.has(memberId)) return { ok: false, error: 'NOT_IN_ROOM' }
+    if (room.ownerId !== memberId) return { ok: false, error: 'NOT_OWNER' }
+    room.streaming = streaming
+    return { ok: true, value: null }
   }
 
   /** A seat holds one person, and a person holds one seat. */
@@ -159,6 +170,8 @@ export class RoomManager {
 
     const next = remaining.find(({ socketId }) => socketId !== null) ?? remaining[0]
     room.ownerId = next.id
+    // The stream was the old owner's screen, so it ends with them.
+    room.streaming = false
     return { name: member.name, newOwner: { id: next.id, name: next.name } }
   }
 
@@ -175,6 +188,7 @@ export class RoomManager {
     return {
       code,
       ownerId: room.ownerId,
+      streaming: room.streaming,
       // Built field by field, so tokens can never reach other members.
       members: [...room.members.values()].map(({ id, name, socketId, seatId, pose }) => ({
         id,

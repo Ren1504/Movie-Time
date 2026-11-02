@@ -2,6 +2,7 @@ import { PlaneGeometry } from 'three'
 import { theatreConfig } from '../../config/theatreConfig'
 import { createBoxBatch } from '../../utils/boxBatch'
 import { createFabricTexture } from '../../utils/proceduralTextures'
+import { CinemaDisplay } from './CinemaDisplay'
 import { frontZ, halfWidth } from './theatreLayout'
 
 const { screen, stage, room, colors } = theatreConfig
@@ -56,11 +57,7 @@ export function TheatreScreen() {
         <meshStandardMaterial color={colors.screenBorder} roughness={1} />
       </mesh>
 
-      {/* The live stream replaces this blank surface in Phase 8. */}
-      <mesh position={[0, screenCenterY, screenZ]}>
-        <planeGeometry args={[screen.width, screen.height]} />
-        <meshBasicMaterial color={colors.idleScreen} toneMapped={false} />
-      </mesh>
+      <CinemaDisplay position={[0, screenCenterY, screenZ]} />
 
       {[-1, 1].map((side) => (
         <mesh

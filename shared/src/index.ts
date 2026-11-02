@@ -41,6 +41,14 @@ export interface RoomSnapshot {
   code: string
   ownerId: string
   members: RoomMember[]
+  /** True while the host is sharing their screen. */
+  streaming: boolean
+}
+
+/** What a client needs to connect to the media server. */
+export interface StreamAccess {
+  url: string
+  token: string
 }
 
 export interface RoomSession {
@@ -61,6 +69,7 @@ export type RoomErrorCode =
   | 'SESSION_EXPIRED'
   | 'INVALID_SEAT'
   | 'SEAT_TAKEN'
+  | 'STREAM_UNAVAILABLE'
 
 export type RoomResult<T> =
   | { ok: true; value: T }
@@ -84,8 +93,11 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<RoomSession>) => void,
   ) => void
   'room:rejoin': (
-    /** keepSeat is false after a refresh, as the player restarts on their feet. */
-    payload: { token: string; keepSeat: boolean },
+    /**
+     * Both are false after a refresh, as the player restarts on their feet and
+     * the browser has ended any screen capture.
+     */
+    payload: { token: string; keepSeat: boolean; keepStream: boolean },
     ack: (result: RoomResult<RoomSession>) => void,
   ) => void
   'room:leave': (ack: (result: RoomResult<null>) => void) => void
@@ -99,6 +111,12 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<null>) => void,
   ) => void
   'seat:release': () => void
+  /** Only the host's token allows publishing to the media server. */
+  'stream:access': (ack: (result: RoomResult<StreamAccess>) => void) => void
+  /** Host only. */
+  'stream:start': (ack: (result: RoomResult<null>) => void) => void
+  /** Host only. */
+  'stream:stop': (ack: (result: RoomResult<null>) => void) => void
 }
 
 export interface ServerToClientEvents {

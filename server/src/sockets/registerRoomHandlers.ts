@@ -8,6 +8,7 @@ import type {
 } from '@movie/shared'
 import { serverConfig } from '../config.ts'
 import type { MemberEntry, RoomManager } from '../rooms/RoomManager.ts'
+import { closeStream, createStreamToken, removeFromStream } from '../streaming/liveKit.ts'
 
 interface SocketData {
   /** Who this connection is. Set only here, and never taken from a message. */
@@ -44,12 +45,17 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       cancelRemoval(member.id)
       detachSocket(member.socketId, code)
     }
+    closeStream(code)
   }
 
   const removeMember = (code: string, memberId: string) => {
     cancelRemoval(memberId)
+    removeFromStream(code, memberId)
     const departure = rooms.removeMember(code, memberId)
-    if (!departure) return
+    if (!departure) {
+      closeStream(code)
+      return
+    }
     broadcastRoom(code)
     io.to(code).emit('room:member-left', departure)
   }
@@ -93,6 +99,39 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       if (result.ok) broadcastRoom(session.code)
     })
 
+    socket.on('stream:access', async (ack) => {
+      if (typeof ack !== 'function') return
+      const session = socket.data.session
+      if (!session) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      try {
+        const token = await createStreamToken(
+          session.code,
+          session.memberId,
+          rooms.isOwner(session.code, session.memberId),
+        )
+        // Friends need this computer's public address, and the host needs localhost.
+        const { hostname } = new URL(`http://${socket.handshake.headers.host}`)
+        const url = `ws://${hostname}:${serverConfig.liveKit.clientPort}`
+        ack({ ok: true, value: { url, token } })
+      } catch {
+        ack({ ok: false, error: 'STREAM_UNAVAILABLE' })
+      }
+    })
+
+    const handleSetStreaming = (
+      streaming: boolean,
+      ack: (result: RoomResult<null>) => void,
+    ) => {
+      if (typeof ack !== 'function') return
+      const session = socket.data.session
+      if (!session) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      const result = rooms.setStreaming(session.code, session.memberId, streaming)
+      ack(result)
+      if (result.ok) broadcastRoom(session.code)
+    }
+    socket.on('stream:start', (ack) => handleSetStreaming(true, ack))
+    socket.on('stream:stop', (ack) => handleSetStreaming(false, ack))
+
     socket.on('seat:release', () => {
       const session = socket.data.session
       if (!session) return
@@ -133,6 +172,7 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       }
       member.socketId = socket.id
       if (payload.keepSeat !== true) member.seatId = null
+      if (payload.keepStream !== true) rooms.setStreaming(code, member.id, false)
       ack({ ok: true, value: enterRoom(socket, entry) })
     })
 
@@ -163,8 +203,14 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       if (!member) return
 
       member.socketId = null
-      // "Reconnecting" is only shown for real drops. A closed page simply leaves.
-      if (!socket.data.pageClosing) broadcastRoom(session.code)
+      // "Reconnecting" is only shown for real drops. A closed page simply leaves,
+      // and its screen capture has ended, so viewers shouldn't keep waiting for it.
+      if (socket.data.pageClosing) {
+        const stopped = rooms.setStreaming(session.code, member.id, false)
+        if (stopped.ok) broadcastRoom(session.code)
+      } else {
+        broadcastRoom(session.code)
+      }
       removalTimers.set(
         member.id,
         setTimeout(

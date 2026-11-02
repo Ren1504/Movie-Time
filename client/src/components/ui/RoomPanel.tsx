@@ -10,6 +10,20 @@ interface RoomPanelProps {
   onClose: () => void
 }
 
+function copyText(text: string) {
+  if (navigator.clipboard) {
+    void navigator.clipboard.writeText(text)
+    return
+  }
+  // Browsers only offer the clipboard API over a secure connection.
+  const field = document.createElement('textarea')
+  field.value = text
+  document.body.append(field)
+  field.select()
+  document.execCommand('copy')
+  field.remove()
+}
+
 export function RoomPanel({
   room,
   memberId,
@@ -27,12 +41,13 @@ export function RoomPanel({
         {interactive && (
           <button
             type="button"
-            onClick={() => void navigator.clipboard.writeText(room.code)}
+            onClick={() => copyText(room.code)}
           >
             Copy
           </button>
         )}
       </div>
+      {room.streaming && <span className="live-pill">LIVE</span>}
       <ul>
         {room.members.map((member) => (
           <li key={member.id} className={member.connected ? undefined : 'room-member-away'}>

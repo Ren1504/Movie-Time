@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { RoomMember } from '@movie/shared'
 import type { SeatPrompt } from '../../systems/seats/useSeatInteraction'
+import {
+  allowStreamAudio,
+  connectStream,
+  disconnectStream,
+} from '../../systems/stream/streamConnection'
 import type { PlayerControllerHandle } from '../player/PlayerController'
+import { HostStreamPanel } from '../ui/HostStreamPanel'
 import { SeatPromptLabel } from '../ui/SeatPromptLabel'
 import { TheatreOverlay } from '../ui/TheatreOverlay'
 import { SceneCanvas } from './SceneCanvas'
@@ -17,6 +23,7 @@ const RELOCK_COOLDOWN_MS = 1500
 interface TheatreViewProps {
   members: RoomMember[]
   localMemberId: string
+  ownerId: string
   onSeatDenied: (message: string) => void
   /** Renders room details, which can only be clicked when the mouse is free. */
   renderRoomPanel: (interactive: boolean) => ReactNode
@@ -25,6 +32,7 @@ interface TheatreViewProps {
 export function TheatreView({
   members,
   localMemberId,
+  ownerId,
   onSeatDenied,
   renderRoomPanel,
 }: TheatreViewProps) {
@@ -54,7 +62,18 @@ export function TheatreView({
   // The room can end during play, which must give the mouse back.
   useEffect(() => () => document.exitPointerLock(), [])
 
+  const isHost = members.some(
+    (member) => member.id === localMemberId && member.id === ownerId,
+  )
+
+  // A new host needs new access, as only the host's allows publishing.
+  useEffect(() => {
+    void connectStream()
+    return disconnectStream
+  }, [isHost])
+
   const handleEnter = () => {
+    allowStreamAudio()
     setNotice(null)
     playerRef.current?.lock()
   }
@@ -89,6 +108,7 @@ export function TheatreView({
           onAction={handleEnter}
         />
       )}
+      {isHost && <HostStreamPanel interactive={gameState !== 'playing'} />}
       {renderRoomPanel(gameState !== 'playing')}
     </>
   )

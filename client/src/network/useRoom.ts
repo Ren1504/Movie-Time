@@ -9,6 +9,7 @@ import type {
 } from '@movie/shared'
 import { syncRemotePoses } from '../systems/multiplayer/remotePoses'
 import { localSeat, syncOccupiedSeats } from '../systems/seats/seatOccupancy'
+import { getStreamState, updateStreamState } from '../systems/stream/streamStore'
 import { REQUEST_TIMEOUT_MS, socket } from './socket'
 
 // Kept per tab, so a refresh returns to the room and two tabs are two people.
@@ -28,11 +29,13 @@ const ERROR_MESSAGES: Record<RoomErrorCode, string> = {
   SESSION_EXPIRED: 'Your room is no longer available.',
   INVALID_SEAT: "That seat doesn't exist.",
   SEAT_TAKEN: 'That seat is taken.',
+  STREAM_UNAVAILABLE: 'Streaming is unavailable right now.',
 }
 
 function syncGameState(room: RoomSnapshot) {
   syncOccupiedSeats(room)
   syncRemotePoses(room)
+  updateStreamState({ roomStreaming: room.streaming })
 }
 
 const END_MESSAGES: Record<RoomEndReason, string> = {
@@ -74,7 +77,8 @@ export function useRoom() {
       const token = sessionStorage.getItem(TOKEN_KEY)
       if (!token) return
       const keepSeat = localSeat.id !== null
-      socket.emit('room:rejoin', { token, keepSeat }, (result) => {
+      const keepStream = getStreamState().sharing
+      socket.emit('room:rejoin', { token, keepSeat, keepStream }, (result) => {
         setRestoring(false)
         if (result.ok) enter(result.value)
         else exit(ERROR_MESSAGES[result.error])

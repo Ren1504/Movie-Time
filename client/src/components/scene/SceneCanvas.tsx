@@ -12,6 +12,7 @@ import {
   PlayerController,
   type PlayerControllerHandle,
 } from '../player/PlayerController'
+import { SurroundListener } from './SurroundListener'
 import { Theatre } from '../theatre/Theatre'
 import {
   collisionBoxes,
@@ -79,6 +80,7 @@ export function SceneCanvas({
       <color attach="background" args={[sceneConfig.background]} />
       <Theatre />
       <RemoteAvatars members={members} localMemberId={localMemberId} />
+      <SurroundListener />
       <Suspense fallback={null}>
         <Physics timeStep="vary" debug={physicsDebug}>
           <StaticColliders boxes={collisionBoxes} />

@@ -196,6 +196,96 @@ body,
   background: #ffffff33;
 }
 
+.live-pill {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: #d8222f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.stream-panel {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  width: 260px;
+  padding: 12px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: #120d0ccc;
+  color: #f2e6d8;
+  font: 13px system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+.stream-panel-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stream-panel dl {
+  margin: 8px 0 0;
+}
+
+.stream-panel dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+
+.stream-panel dt {
+  color: #f2e6d899;
+}
+
+.stream-panel dd {
+  margin: 0;
+  text-align: right;
+}
+
+.stream-panel p {
+  margin: 8px 0 0;
+  color: #ffb56b;
+}
+
+.stream-panel .stream-panel-hint {
+  color: #f2e6d899;
+}
+
+.stream-panel button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px;
+  border: 0;
+  border-radius: 6px;
+  background: #ffffff1a;
+  color: #fff;
+  font: 600 13px system-ui, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+}
+
+.stream-panel button:hover {
+  background: #ffffff33;
+}
+
+.stream-panel button.primary {
+  background: #8e1420;
+}
+
+.stream-panel button.primary:hover {
+  background: #a81a28;
+}
+
+.stream-panel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .room-announcement {
   position: fixed;
   top: 16px;

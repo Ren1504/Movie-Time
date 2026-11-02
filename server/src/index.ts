@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs'
 import { createServer } from 'node:http'
+import { join } from 'node:path'
 import express from 'express'
 import { Server } from 'socket.io'
 import { serverConfig } from './config.ts'
@@ -9,6 +11,12 @@ const app = express()
 app.get('/health', (_request, response) => {
   response.json({ status: 'ok' })
 })
+
+// In development Vite serves the app instead.
+const clientBuild = join(import.meta.dirname, '..', '..', 'client', 'dist')
+if (serverConfig.isProduction && existsSync(clientBuild)) {
+  app.use(express.static(clientBuild))
+}
 
 const httpServer = createServer(app)
 const io = new Server(httpServer, {

@@ -43,6 +43,7 @@ function App() {
       <TheatreView
         members={current.room.members}
         localMemberId={current.memberId}
+        ownerId={current.room.ownerId}
         onSeatDenied={announce}
         renderRoomPanel={(interactive) => (
           <RoomPanel
