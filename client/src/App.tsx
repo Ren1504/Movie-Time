@@ -11,6 +11,7 @@ const LOCK_ERROR_NOTICE =
 function App() {
   const playerRef = useRef<PlayerControllerHandle>(null)
   const [gameState, setGameState] = useState<GameState>('start')
+  const [playerReady, setPlayerReady] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   const handleLockChange = useCallback((locked: boolean) => {
@@ -19,6 +20,7 @@ function App() {
   }, [])
 
   const handleLockError = useCallback(() => setNotice(LOCK_ERROR_NOTICE), [])
+  const handlePlayerReady = useCallback(() => setPlayerReady(true), [])
 
   const handleEnter = () => {
     setNotice(null)
@@ -29,13 +31,21 @@ function App() {
     <>
       <SceneCanvas
         playerRef={playerRef}
+        onPlayerReady={handlePlayerReady}
         onLockChange={handleLockChange}
         onLockError={handleLockError}
       />
       {gameState !== 'playing' && (
         <TheatreOverlay
           title={gameState === 'start' ? 'Movie With Friends' : 'Paused'}
-          actionLabel={gameState === 'start' ? 'Enter Theatre' : 'Resume'}
+          actionLabel={
+            !playerReady
+              ? 'Loading...'
+              : gameState === 'start'
+                ? 'Enter Theatre'
+                : 'Resume'
+          }
+          actionDisabled={!playerReady}
           notice={notice}
           onAction={handleEnter}
         />

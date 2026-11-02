@@ -1,6 +1,7 @@
 interface TheatreOverlayProps {
   title: string
   actionLabel: string
+  actionDisabled: boolean
   notice: string | null
   onAction: () => void
 }
@@ -14,6 +15,7 @@ const CONTROLS = [
 export function TheatreOverlay({
   title,
   actionLabel,
+  actionDisabled,
   notice,
   onAction,
 }: TheatreOverlayProps) {
@@ -29,7 +31,7 @@ export function TheatreOverlay({
             </div>
           ))}
         </dl>
-        <button type="button" onClick={onAction}>
+        <button type="button" disabled={actionDisabled} onClick={onAction}>
           {actionLabel}
         </button>
         {notice && <p role="alert">{notice}</p>}

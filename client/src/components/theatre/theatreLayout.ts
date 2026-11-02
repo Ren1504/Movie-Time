@@ -93,21 +93,76 @@ export const doorCenters: Vec3[] = [-sideAisleCenterX, sideAisleCenterX].map(
   (x): Vec3 => [x, rearFloorY + door.height / 2, backZ],
 )
 
-const WALL_CLEARANCE = 0.4
+// Extent of one seat model around its origin, from TheatreSeats.
+const SEAT_FRONT_Z = -0.28
+const SEAT_BACK_Z = 0.42
+const SEAT_HEIGHT = 1.27
+const WALL_COLLIDER_THICKNESS = 1
 
-export const movementBounds = {
-  minX: -halfWidth + WALL_CLEARANCE,
-  maxX: halfWidth - WALL_CLEARANCE,
-  minZ: frontZ + WALL_CLEARANCE,
-  maxZ: backZ - WALL_CLEARANCE,
+// Each row block is one solid box, which is far cheaper than one box per seat.
+const seatColliderBoxes: Box[] = Array.from({ length: seating.rows }, (_, row) =>
+  blockCenters.map((centerX): Box => ({
+    center: [
+      centerX,
+      rowFloorY(row) + SEAT_HEIGHT / 2,
+      rowZ(row) + seating.seatOffsetZ + (SEAT_FRONT_Z + SEAT_BACK_Z) / 2,
+    ],
+    size: [blockWidth, SEAT_HEIGHT, SEAT_BACK_Z - SEAT_FRONT_Z],
+  })),
+).flat()
+
+const wallOffset = WALL_COLLIDER_THICKNESS / 2
+const wallColliderBoxes: Box[] = [
+  ...[-1, 1].map((side): Box => ({
+    center: [side * (halfWidth + wallOffset), room.height / 2, frontZ + room.length / 2],
+    size: [WALL_COLLIDER_THICKNESS, room.height, room.length],
+  })),
+  ...[frontZ - wallOffset, backZ + wallOffset].map((z): Box => ({
+    center: [0, room.height / 2, z],
+    size: [room.width, room.height, WALL_COLLIDER_THICKNESS],
+  })),
+]
+
+const stageColliderBox: Box = {
+  center: [0, stage.height / 2, frontZ + stage.depth / 2],
+  size: [room.width, stage.height, stage.depth],
 }
 
-// Temporary until Phase 4: physics replaces this floor height lookup.
-export function getFloorHeight(_x: number, z: number): number {
-  if (z < frontZ + stage.depth) return stage.height
-  const row = Math.floor((z - rowFrontZ(0)) / seating.rowDepth)
-  return rowFloorY(Math.min(Math.max(row, 0), lastRow))
+const FLOOR_COLLIDER_THICKNESS = 0.5
+const floorColliderBox: Box = {
+  center: [0, -FLOOR_COLLIDER_THICKNESS / 2, frontZ + room.length / 2],
+  size: [room.width, FLOOR_COLLIDER_THICKNESS, room.length],
 }
+
+// The player walks on one smooth slope instead of the visible stepped tiers.
+// It meets the front edge of each tier, so feet stay close to the drawn floor.
+const slopeStartZ = rowFrontZ(0)
+const slopeEndZ = rowFrontZ(lastRow)
+const slopeRun = slopeEndZ - slopeStartZ
+const slopeAngle = Math.atan2(rearFloorY, slopeRun)
+const seatingSlopeBox: Box = {
+  center: [
+    0,
+    rearFloorY / 2 - (FLOOR_COLLIDER_THICKNESS / 2) * Math.cos(slopeAngle),
+    (slopeStartZ + slopeEndZ) / 2 + (FLOOR_COLLIDER_THICKNESS / 2) * Math.sin(slopeAngle),
+  ],
+  size: [room.width, FLOOR_COLLIDER_THICKNESS, Math.hypot(slopeRun, rearFloorY)],
+  rotationX: -slopeAngle,
+}
+
+const rearWalkwayBox: Box = {
+  center: [0, rearFloorY / 2, (slopeEndZ + backZ) / 2],
+  size: [room.width, rearFloorY, backZ - slopeEndZ],
+}
+
+export const collisionBoxes: Box[] = [
+  floorColliderBox,
+  seatingSlopeBox,
+  rearWalkwayBox,
+  ...seatColliderBoxes,
+  ...wallColliderBoxes,
+  stageColliderBox,
+]
 
 export const spawnPosition: Vec3 = [0, rearFloorY, backZ - 1.5]
 export const spawnLookAt: Vec3 = [

@@ -1,6 +1,13 @@
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { MathUtils } from 'three'
+import {
+  CapsuleCollider,
+  RigidBody,
+  useRapier,
+  type RapierCollider,
+  type RapierRigidBody,
+} from '@react-three/rapier'
+import { MathUtils, Vector3 } from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import { playerConfig } from '../../config/playerConfig'
 import type { Vec3 } from '../../utils/boxBatch'
@@ -11,37 +18,45 @@ export interface PlayerControllerHandle {
   lock: () => void
 }
 
-export interface MovementBounds {
-  minX: number
-  maxX: number
-  minZ: number
-  maxZ: number
-}
-
 interface PlayerControllerProps {
   ref: Ref<PlayerControllerHandle>
+  /** Where the player's feet start. */
   spawnPosition: Vec3
   spawnLookAt: Vec3
-  bounds: MovementBounds
-  getFloorHeight: (x: number, z: number) => number
+  onReady: () => void
   onLockChange: (locked: boolean) => void
   onLockError: () => void
 }
+
+const { bodyHeight, bodyRadius } = playerConfig
+const BODY_CENTER_HEIGHT = bodyHeight / 2
+const CAPSULE_HALF_HEIGHT = BODY_CENTER_HEIGHT - bodyRadius
+// Starts just above the floor, so the player settles onto it.
+const SPAWN_CLEARANCE = 0.05
+// Runs before the physics step, which uses the default priority of 0.
+const BEFORE_PHYSICS_STEP = -1
+
+const WORLD_UP = new Vector3(0, 1, 0)
+const forward = new Vector3()
+const right = new Vector3()
 
 export function PlayerController({
   ref,
   spawnPosition,
   spawnLookAt,
-  bounds,
-  getFloorHeight,
+  onReady,
   onLockChange,
   onLockError,
 }: PlayerControllerProps) {
   const camera = useThree((state) => state.camera)
   const canvas = useThree((state) => state.gl.domElement)
+  const { world } = useRapier()
   const pressedRef = useMovementKeys()
   const controlsRef = useRef<PointerLockControls>(null)
-  const velocityRef = useRef({ forward: 0, right: 0 })
+  const bodyRef = useRef<RapierRigidBody>(null)
+  const colliderRef = useRef<RapierCollider>(null)
+  const characterRef = useRef<ReturnType<typeof world.createCharacterController>>(null)
+  const velocityRef = useRef({ forward: 0, right: 0, vertical: 0 })
 
   useEffect(() => {
     const [x, y, z] = spawnPosition
@@ -50,13 +65,23 @@ export function PlayerController({
   }, [camera, spawnPosition, spawnLookAt])
 
   useEffect(() => {
+    const character = world.createCharacterController(playerConfig.collisionOffset)
+    character.enableSnapToGround(playerConfig.snapToGroundDistance)
+    characterRef.current = character
+    return () => {
+      characterRef.current = null
+      world.removeCharacterController(character)
+    }
+  }, [world])
+
+  useEffect(() => {
     const controls = new PointerLockControls(camera, canvas)
     controls.pointerSpeed = playerConfig.mouseSensitivity
     controlsRef.current = controls
 
     const handleLock = () => onLockChange(true)
     const handleUnlock = () => {
-      velocityRef.current = { forward: 0, right: 0 }
+      velocityRef.current = { forward: 0, right: 0, vertical: 0 }
       onLockChange(false)
     }
     controls.addEventListener('lock', handleLock)
@@ -83,9 +108,16 @@ export function PlayerController({
     [canvas],
   )
 
+  useEffect(() => {
+    onReady()
+  }, [onReady])
+
   useFrame((state, frameDelta) => {
     const controls = controlsRef.current
-    if (!controls?.isLocked) return
+    const body = bodyRef.current
+    const collider = colliderRef.current
+    const character = characterRef.current
+    if (!controls?.isLocked || !body || !collider || !character) return
 
     const delta = Math.min(frameDelta, playerConfig.maxFrameDelta)
     const pressed = pressedRef.current
@@ -112,20 +144,58 @@ export function PlayerController({
       movementResponse,
       delta,
     )
+    // No downward push while grounded, as it would drag the player down the
+    // slope. Snap-to-ground keeps the player on the floor instead.
+    velocity.vertical = character.computedGrounded()
+      ? 0
+      : Math.max(
+          velocity.vertical - playerConfig.gravity * delta,
+          -playerConfig.maxFallSpeed,
+        )
 
-    controls.moveForward(velocity.forward * delta)
-    controls.moveRight(velocity.right * delta)
+    // Looking up or down must not change walking speed, so only heading counts.
+    state.camera.getWorldDirection(forward)
+    forward.setY(0).normalize()
+    right.crossVectors(forward, WORLD_UP)
+
+    character.computeColliderMovement(collider, {
+      x: (forward.x * velocity.forward + right.x * velocity.right) * delta,
+      y: velocity.vertical * delta,
+      z: (forward.z * velocity.forward + right.z * velocity.right) * delta,
+    })
+    const movement = character.computedMovement()
+    const current = body.translation()
+    const next = {
+      x: current.x + movement.x,
+      y: current.y + movement.y,
+      z: current.z + movement.z,
+    }
+    body.setNextKinematicTranslation(next)
 
     const position = state.camera.position
-    position.x = MathUtils.clamp(position.x, bounds.minX, bounds.maxX)
-    position.z = MathUtils.clamp(position.z, bounds.minZ, bounds.maxZ)
+    position.x = next.x
+    position.z = next.z
+    // Only height is smoothed, so changes in floor height don't jolt the view.
     position.y = MathUtils.damp(
       position.y,
-      getFloorHeight(position.x, position.z) + eyeHeight,
+      next.y - BODY_CENTER_HEIGHT + eyeHeight,
       heightResponse,
       delta,
     )
-  })
+  }, BEFORE_PHYSICS_STEP)
 
-  return null
+  return (
+    <RigidBody
+      ref={bodyRef}
+      type="kinematicPosition"
+      colliders={false}
+      position={[
+        spawnPosition[0],
+        spawnPosition[1] + BODY_CENTER_HEIGHT + SPAWN_CLEARANCE,
+        spawnPosition[2],
+      ]}
+    >
+      <CapsuleCollider ref={colliderRef} args={[CAPSULE_HALF_HEIGHT, bodyRadius]} />
+    </RigidBody>
+  )
 }

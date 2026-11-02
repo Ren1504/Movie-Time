@@ -6,6 +6,8 @@ export type Vec3 = readonly [number, number, number]
 export interface Box {
   center: Vec3
   size: Vec3
+  /** Tilt around the X axis in radians. Only colliders use this. */
+  rotationX?: number
 }
 
 /**

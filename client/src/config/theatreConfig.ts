@@ -12,7 +12,7 @@ export const theatreConfig = {
     rows: 5,
     seatsPerBlock: 16,
     seatPitch: 0.6,
-    rowDepth: 1.2,
+    rowDepth: 1.6,
     rowRise: 0.35,
     firstRowZ: 2,
     centerAisleWidth: 2,
