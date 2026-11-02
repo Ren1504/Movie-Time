@@ -4,6 +4,10 @@ import { Physics } from '@react-three/rapier'
 import { sceneConfig } from '../../config/sceneConfig'
 import { StaticColliders } from '../../systems/physics/StaticColliders'
 import {
+  occupiedSeatIds,
+  type SeatPrompt,
+} from '../../systems/seats/useSeatInteraction'
+import {
   PlayerController,
   type PlayerControllerHandle,
 } from '../player/PlayerController'
@@ -30,6 +34,7 @@ interface SceneCanvasProps {
   onPlayerReady: () => void
   onLockChange: (locked: boolean) => void
   onLockError: () => void
+  onSeatPromptChange: (prompt: SeatPrompt | null) => void
 }
 
 export function SceneCanvas({
@@ -37,6 +42,7 @@ export function SceneCanvas({
   onPlayerReady,
   onLockChange,
   onLockError,
+  onSeatPromptChange,
 }: SceneCanvasProps) {
   return (
     <Canvas
@@ -48,7 +54,7 @@ export function SceneCanvas({
         gl.shadowMap.autoUpdate = false
         gl.shadowMap.needsUpdate = true
         if (physicsDebug) {
-          ;(window as unknown as { debugCamera: unknown }).debugCamera = camera
+          Object.assign(window, { debugCamera: camera, debugOccupiedSeats: occupiedSeatIds })
         }
       }}
       fallback={webglFallback}
@@ -65,6 +71,7 @@ export function SceneCanvas({
             onReady={onPlayerReady}
             onLockChange={onLockChange}
             onLockError={onLockError}
+            onSeatPromptChange={onSeatPromptChange}
           />
         </Physics>
       </Suspense>

@@ -14,7 +14,7 @@ export const theatreConfig = {
     seatPitch: 0.6,
     rowDepth: 1.6,
     rowRise: 0.35,
-    firstRowZ: 2,
+    firstRowZ: -2,
     centerAisleWidth: 2,
     // Offset from the tier centre, so the legroom ends up in front of the seat.
     seatOffsetZ: 0.15,

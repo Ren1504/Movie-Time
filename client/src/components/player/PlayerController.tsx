@@ -7,10 +7,15 @@ import {
   type RapierCollider,
   type RapierRigidBody,
 } from '@react-three/rapier'
-import { MathUtils, Vector3 } from 'three'
+import { MathUtils, Vector3, type Mesh } from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import { playerConfig } from '../../config/playerConfig'
+import {
+  useSeatInteraction,
+  type SeatPrompt,
+} from '../../systems/seats/useSeatInteraction'
 import type { Vec3 } from '../../utils/boxBatch'
+import { SeatHighlight } from '../theatre/SeatHighlight'
 import { useMovementKeys } from './useMovementKeys'
 
 export interface PlayerControllerHandle {
@@ -26,6 +31,7 @@ interface PlayerControllerProps {
   onReady: () => void
   onLockChange: (locked: boolean) => void
   onLockError: () => void
+  onSeatPromptChange: (prompt: SeatPrompt | null) => void
 }
 
 const { bodyHeight, bodyRadius } = playerConfig
@@ -47,11 +53,14 @@ export function PlayerController({
   onReady,
   onLockChange,
   onLockError,
+  onSeatPromptChange,
 }: PlayerControllerProps) {
   const camera = useThree((state) => state.camera)
   const canvas = useThree((state) => state.gl.domElement)
   const { world } = useRapier()
   const pressedRef = useMovementKeys()
+  const seatHighlightRef = useRef<Mesh>(null)
+  const updateSeating = useSeatInteraction(seatHighlightRef, onSeatPromptChange)
   const controlsRef = useRef<PointerLockControls>(null)
   const bodyRef = useRef<RapierRigidBody>(null)
   const colliderRef = useRef<RapierCollider>(null)
@@ -120,6 +129,11 @@ export function PlayerController({
     if (!controls?.isLocked || !body || !collider || !character) return
 
     const delta = Math.min(frameDelta, playerConfig.maxFrameDelta)
+    if (!updateSeating(state.camera, body, delta)) {
+      velocityRef.current = { forward: 0, right: 0, vertical: 0 }
+      return
+    }
+
     const pressed = pressedRef.current
     let inputForward = Number(pressed.has('KeyW')) - Number(pressed.has('KeyS'))
     let inputRight = Number(pressed.has('KeyD')) - Number(pressed.has('KeyA'))
@@ -185,17 +199,20 @@ export function PlayerController({
   }, BEFORE_PHYSICS_STEP)
 
   return (
-    <RigidBody
-      ref={bodyRef}
-      type="kinematicPosition"
-      colliders={false}
-      position={[
-        spawnPosition[0],
-        spawnPosition[1] + BODY_CENTER_HEIGHT + SPAWN_CLEARANCE,
-        spawnPosition[2],
-      ]}
-    >
-      <CapsuleCollider ref={colliderRef} args={[CAPSULE_HALF_HEIGHT, bodyRadius]} />
-    </RigidBody>
+    <>
+      <RigidBody
+        ref={bodyRef}
+        type="kinematicPosition"
+        colliders={false}
+        position={[
+          spawnPosition[0],
+          spawnPosition[1] + BODY_CENTER_HEIGHT + SPAWN_CLEARANCE,
+          spawnPosition[2],
+        ]}
+      >
+        <CapsuleCollider ref={colliderRef} args={[CAPSULE_HALF_HEIGHT, bodyRadius]} />
+      </RigidBody>
+      <SeatHighlight ref={seatHighlightRef} />
+    </>
   )
 }

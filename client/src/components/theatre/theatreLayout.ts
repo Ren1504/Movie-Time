@@ -1,3 +1,4 @@
+import { MathUtils } from 'three'
 import { theatreConfig } from '../../config/theatreConfig'
 import type { Box, Vec3 } from '../../utils/boxBatch'
 
@@ -64,18 +65,6 @@ export const aisleCarpetBoxes: Box[] = aisles.flatMap(({ centerX, width }) => [
   },
   ...raisedRows.map((row) => tierBox(row, centerX, width)),
 ])
-
-export const seatPositions: Vec3[] = Array.from(
-  { length: seating.rows },
-  (_, row) =>
-    blockCenters.flatMap((blockX) =>
-      Array.from({ length: seating.seatsPerBlock }, (_, seat): Vec3 => [
-        blockX + (seat - (seating.seatsPerBlock - 1) / 2) * seating.seatPitch,
-        rowFloorY(row),
-        rowZ(row) + seating.seatOffsetZ,
-      ]),
-    ),
-).flat()
 
 // Small lights set into each aisle step, one near each edge of the aisle.
 export const stepLightPositions: Vec3[] = raisedRows.flatMap((row) =>
@@ -154,6 +143,39 @@ const rearWalkwayBox: Box = {
   center: [0, rearFloorY / 2, (slopeEndZ + backZ) / 2],
   size: [room.width, rearFloorY, backZ - slopeEndZ],
 }
+
+const walkableFloorY = (z: number) =>
+  (MathUtils.clamp(z, slopeStartZ, slopeEndZ) - slopeStartZ) * Math.tan(slopeAngle)
+
+export interface Seat {
+  /** Stable name such as "R3-L07": row 3, left block, seat 7. */
+  id: string
+  position: Vec3
+  /** Where the player's feet go when standing up, in the legroom in front. */
+  standPosition: Vec3
+}
+
+// Middle of the gap between this seat's front and the back of the row ahead.
+const LEGROOM_CENTER_OFFSET = (SEAT_FRONT_Z + SEAT_BACK_Z - seating.rowDepth) / 2
+
+export const seats: Seat[] = Array.from({ length: seating.rows }, (_, row) =>
+  blockCenters.flatMap((blockX, block) =>
+    Array.from({ length: seating.seatsPerBlock }, (_, seat): Seat => {
+      const x = blockX + (seat - (seating.seatsPerBlock - 1) / 2) * seating.seatPitch
+      const z = rowZ(row) + seating.seatOffsetZ
+      const standZ = z + LEGROOM_CENTER_OFFSET
+      const blockName = block === 0 ? 'L' : 'R'
+      const seatNumber = String(seat + 1).padStart(2, '0')
+      return {
+        id: `R${row + 1}-${blockName}${seatNumber}`,
+        position: [x, rowFloorY(row), z],
+        standPosition: [x, walkableFloorY(standZ), standZ],
+      }
+    }),
+  ),
+).flat()
+
+export const seatPositions: Vec3[] = seats.map((seat) => seat.position)
 
 export const collisionBoxes: Box[] = [
   floorColliderBox,

@@ -77,6 +77,28 @@ body,
   font-size: 13px;
 }
 
+.seat-prompt {
+  position: fixed;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #120d0ccc;
+  color: #f2e6d8;
+  font: 500 16px system-ui, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: none;
+}
+
+.seat-prompt kbd {
+  padding: 1px 7px;
+  border: 1px solid #ffb56b;
+  border-radius: 4px;
+  color: #ffb56b;
+  font: inherit;
+  font-weight: 600;
+}
+
 .webgl-fallback {
   padding: 2rem;
   color: #f2e6d8;

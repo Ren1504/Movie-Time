@@ -9,6 +9,7 @@ interface TheatreOverlayProps {
 const CONTROLS = [
   ['W A S D', 'Walk'],
   ['Mouse', 'Look around'],
+  ['E', 'Sit or stand'],
   ['Esc', 'Pause'],
 ]
 
