@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Object3D } from 'three'
 import { theatreConfig } from '../../config/theatreConfig'
+import { ambienceLight } from '../../systems/ambience/ambienceState'
 import type { Vec3 } from '../../utils/boxBatch'
 import { doorCenters, halfWidth, rearFloorY } from './theatreLayout'
 
@@ -12,7 +13,7 @@ function CeilingSpot({ position }: { position: Vec3 }) {
     <>
       <primitive object={target} position={[position[0], 0, position[2]]} />
       <spotLight
-        color={ceilingSpots.color}
+        ref={ambienceLight('ceilingSpot')}
         intensity={ceilingSpots.intensity}
         angle={ceilingSpots.angle}
         penumbra={ceilingSpots.penumbra}
@@ -27,15 +28,16 @@ function CeilingSpot({ position }: { position: Vec3 }) {
   )
 }
 
+// Colours and brightness are blended by the ambience system. The positions here stay fixed.
 export function TheatreLighting() {
   return (
     <>
-      <ambientLight color={ambient.color} intensity={ambient.intensity} />
+      <ambientLight ref={ambienceLight('ambient')} intensity={ambient.intensity} />
       {ceilingSpots.positions.map((position) => (
         <CeilingSpot key={position[2]} position={position} />
       ))}
       <pointLight
-        color={screenWash.color}
+        ref={ambienceLight('screenWash')}
         intensity={screenWash.intensity}
         position={screenWash.position}
       />
@@ -43,7 +45,7 @@ export function TheatreLighting() {
         sconces.zPositions.map((z) => (
           <pointLight
             key={`${side}:${z}`}
-            color={sconces.color}
+            ref={ambienceLight('sconce')}
             intensity={sconces.intensity}
             position={[side * (halfWidth - sconces.wallOffset), sconces.y, z]}
           />
@@ -52,7 +54,7 @@ export function TheatreLighting() {
       {doorCenters.map(([x, , z]) => (
         <pointLight
           key={x}
-          color={doorWash.color}
+          ref={ambienceLight('doorWash')}
           intensity={doorWash.intensity}
           position={[
             x - Math.sign(x) * doorWash.inwardOffset,

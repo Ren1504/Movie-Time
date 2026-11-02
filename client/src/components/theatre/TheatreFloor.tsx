@@ -1,4 +1,4 @@
-import { theatreConfig } from '../../config/theatreConfig'
+import { ambienceMaterial } from '../../systems/ambience/ambienceState'
 import { createBoxBatch } from '../../utils/boxBatch'
 import { createFabricTexture } from '../../utils/proceduralTextures'
 import { StaticInstances } from './StaticInstances'
@@ -7,8 +7,6 @@ import {
   seatingCarpetBoxes,
   stepLightPositions,
 } from './theatreLayout'
-
-const { colors } = theatreConfig
 
 const seatingCarpet = createBoxBatch(seatingCarpetBoxes)
 const aisleCarpet = createBoxBatch(aisleCarpetBoxes)
@@ -20,7 +18,7 @@ export function TheatreFloor() {
     <group>
       <mesh geometry={seatingCarpet} receiveShadow>
         <meshStandardMaterial
-          color={colors.carpet}
+          ref={ambienceMaterial('carpet')}
           map={carpetTexture}
           bumpMap={carpetTexture}
           bumpScale={0.6}
@@ -29,7 +27,7 @@ export function TheatreFloor() {
       </mesh>
       <mesh geometry={aisleCarpet} receiveShadow>
         <meshStandardMaterial
-          color={colors.aisleCarpet}
+          ref={ambienceMaterial('aisleCarpet')}
           map={carpetTexture}
           bumpMap={carpetTexture}
           bumpScale={0.6}
@@ -37,7 +35,7 @@ export function TheatreFloor() {
         />
       </mesh>
       <StaticInstances geometry={stepLight} positions={stepLightPositions}>
-        <meshBasicMaterial color={colors.warmEmissive} toneMapped={false} />
+        <meshBasicMaterial ref={ambienceMaterial('fixture')} toneMapped={false} />
       </StaticInstances>
     </group>
   )

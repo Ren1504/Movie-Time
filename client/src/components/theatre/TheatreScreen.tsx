@@ -1,11 +1,12 @@
 import { PlaneGeometry } from 'three'
 import { theatreConfig } from '../../config/theatreConfig'
+import { ambienceMaterial } from '../../systems/ambience/ambienceState'
 import { createBoxBatch } from '../../utils/boxBatch'
 import { createFabricTexture } from '../../utils/proceduralTextures'
 import { CinemaDisplay } from './CinemaDisplay'
 import { frontZ, halfWidth } from './theatreLayout'
 
-const { screen, stage, room, colors } = theatreConfig
+const { screen, stage, room } = theatreConfig
 
 const screenZ = frontZ + screen.wallOffset
 const screenCenterY = screen.bottomY + screen.height / 2
@@ -44,7 +45,7 @@ export function TheatreScreen() {
   return (
     <group>
       <mesh geometry={stageBox} receiveShadow>
-        <meshStandardMaterial color={colors.stage} roughness={0.5} />
+        <meshStandardMaterial ref={ambienceMaterial('stage')} roughness={0.5} />
       </mesh>
 
       <mesh position={[0, screenCenterY, screenZ - 0.02]}>
@@ -54,7 +55,7 @@ export function TheatreScreen() {
             screen.height + 2 * screen.borderWidth,
           ]}
         />
-        <meshStandardMaterial color={colors.screenBorder} roughness={1} />
+        <meshStandardMaterial ref={ambienceMaterial('screenBorder')} roughness={1} />
       </mesh>
 
       <CinemaDisplay position={[0, screenCenterY, screenZ]} />
@@ -69,14 +70,14 @@ export function TheatreScreen() {
             screenZ,
           ]}
         >
-          <meshStandardMaterial color={colors.curtain} map={curtainTexture} roughness={0.9} />
+          <meshStandardMaterial ref={ambienceMaterial('curtain')} map={curtainTexture} roughness={0.9} />
         </mesh>
       ))}
       <mesh
         geometry={valance}
         position={[0, room.height - valanceHeight / 2, screenZ]}
       >
-        <meshStandardMaterial color={colors.curtain} map={curtainTexture} roughness={0.9} />
+        <meshStandardMaterial ref={ambienceMaterial('curtain')} map={curtainTexture} roughness={0.9} />
       </mesh>
     </group>
   )

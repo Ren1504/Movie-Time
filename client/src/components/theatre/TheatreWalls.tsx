@@ -1,4 +1,5 @@
 import { theatreConfig } from '../../config/theatreConfig'
+import { ambienceMaterial } from '../../systems/ambience/ambienceState'
 import { createBoxBatch, type Box } from '../../utils/boxBatch'
 import { createFabricTexture, createSignTexture } from '../../utils/proceduralTextures'
 import { backZ, doorCenters, frontZ, halfWidth, rearFloorY } from './theatreLayout'
@@ -112,14 +113,14 @@ export function TheatreWalls() {
   return (
     <group>
       <mesh geometry={walls} receiveShadow>
-        <meshStandardMaterial color={colors.wall} roughness={0.95} />
+        <meshStandardMaterial ref={ambienceMaterial('wall')} roughness={0.95} />
       </mesh>
       <mesh geometry={screenWall}>
-        <meshStandardMaterial color={colors.screenWall} roughness={1} />
+        <meshStandardMaterial ref={ambienceMaterial('screenWall')} roughness={1} />
       </mesh>
       <mesh geometry={panels} receiveShadow>
         <meshStandardMaterial
-          color={colors.wallPanel}
+          ref={ambienceMaterial('wallPanel')}
           map={wallTexture}
           bumpMap={wallTexture}
           bumpScale={0.4}
@@ -127,19 +128,19 @@ export function TheatreWalls() {
         />
       </mesh>
       <mesh geometry={wood} receiveShadow>
-        <meshStandardMaterial color={colors.wood} roughness={0.55} />
+        <meshStandardMaterial ref={ambienceMaterial('wood')} roughness={0.55} />
       </mesh>
       <mesh geometry={doorFrames}>
-        <meshStandardMaterial color={colors.wood} roughness={0.5} />
+        <meshStandardMaterial ref={ambienceMaterial('wood')} roughness={0.5} />
       </mesh>
       <mesh geometry={doorLeaves} receiveShadow>
-        <meshStandardMaterial color={colors.doorLeaf} roughness={0.6} />
+        <meshStandardMaterial ref={ambienceMaterial('doorLeaf')} roughness={0.6} />
       </mesh>
       <mesh geometry={doorHandles}>
         <meshStandardMaterial color={colors.brass} metalness={0.8} roughness={0.35} />
       </mesh>
       <mesh geometry={sconces}>
-        <meshBasicMaterial color={colors.warmEmissive} toneMapped={false} />
+        <meshBasicMaterial ref={ambienceMaterial('fixture')} toneMapped={false} />
       </mesh>
       {doorCenters.map(([x, y, z]) => (
         <mesh

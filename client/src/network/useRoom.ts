@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
+  AmbienceId,
   MemberDeparture,
   RoomEndReason,
   RoomErrorCode,
@@ -7,6 +8,7 @@ import type {
   RoomSession,
   RoomSnapshot,
 } from '@movie/shared'
+import { setAmbienceTarget } from '../systems/ambience/ambienceState'
 import { syncRemotePoses } from '../systems/multiplayer/remotePoses'
 import { localSeat, syncOccupiedSeats } from '../systems/seats/seatOccupancy'
 import { getStreamState, updateStreamState } from '../systems/stream/streamStore'
@@ -27,6 +29,7 @@ const ERROR_MESSAGES: Record<RoomErrorCode, string> = {
   NOT_IN_ROOM: "You're no longer in that room.",
   NOT_OWNER: 'Only the room owner can do that.',
   SESSION_EXPIRED: 'Your room is no longer available.',
+  INVALID_AMBIENCE: "That ambience doesn't exist.",
   INVALID_SEAT: "That seat doesn't exist.",
   SEAT_TAKEN: 'That seat is taken.',
   STREAM_UNAVAILABLE: 'Streaming is unavailable right now.',
@@ -36,6 +39,10 @@ function syncGameState(room: RoomSnapshot) {
   syncOccupiedSeats(room)
   syncRemotePoses(room)
   updateStreamState({ roomStreaming: room.streaming })
+}
+
+export function setRoomAmbience(ambience: AmbienceId) {
+  socket.timeout(REQUEST_TIMEOUT_MS).emit('room:set-ambience', { ambience }, () => {})
 }
 
 const END_MESSAGES: Record<RoomEndReason, string> = {
@@ -61,6 +68,7 @@ export function useRoom() {
     sessionStorage.setItem(TOKEN_KEY, session.token)
     memberIdRef.current = session.memberId
     syncGameState(session.room)
+    setAmbienceTarget(session.room.ambience, true)
     setCurrent({ memberId: session.memberId, room: session.room })
   }, [])
 
@@ -91,6 +99,7 @@ export function useRoom() {
     }
     const handleUpdated = (room: RoomSnapshot) => {
       syncGameState(room)
+      setAmbienceTarget(room.ambience)
       setCurrent((previous) => previous && { ...previous, room })
     }
     const handleEnded = (reason: RoomEndReason) => exit(END_MESSAGES[reason])

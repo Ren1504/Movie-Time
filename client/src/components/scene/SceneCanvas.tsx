@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import type { RoomMember } from '@movie/shared'
 import { sceneConfig } from '../../config/sceneConfig'
+import { AmbienceController } from '../../systems/ambience/AmbienceController'
 import { remotePoses } from '../../systems/multiplayer/remotePoses'
 import { StaticColliders } from '../../systems/physics/StaticColliders'
 import { occupiedSeatIds } from '../../systems/seats/seatOccupancy'
@@ -12,6 +13,7 @@ import {
   PlayerController,
   type PlayerControllerHandle,
 } from '../player/PlayerController'
+import { FrameLimiter } from './FrameLimiter'
 import { SurroundListener } from './SurroundListener'
 import { Theatre } from '../theatre/Theatre'
 import {
@@ -60,9 +62,11 @@ export function SceneCanvas({
   return (
     <Canvas
       camera={{ ...sceneConfig.camera }}
-      dpr={[1, 2]}
+      dpr={[1, sceneConfig.maxPixelRatio]}
+      frameloop="never"
       shadows
       onCreated={({ gl, camera }) => {
+        if (physicsDebug) Object.assign(window, { debugRenderer: gl })
         // The room itself never moves, so its shadows are only drawn once.
         // Avatars don't cast shadows, as redrawing them every frame is expensive.
         gl.shadowMap.autoUpdate = false
@@ -78,6 +82,8 @@ export function SceneCanvas({
       fallback={webglFallback}
     >
       <color attach="background" args={[sceneConfig.background]} />
+      <FrameLimiter />
+      <AmbienceController />
       <Theatre />
       <RemoteAvatars members={members} localMemberId={localMemberId} />
       <SurroundListener />

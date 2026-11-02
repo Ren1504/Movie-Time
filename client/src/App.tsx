@@ -44,6 +44,7 @@ function App() {
         members={current.room.members}
         localMemberId={current.memberId}
         ownerId={current.room.ownerId}
+        ambience={current.room.ambience}
         onSeatDenied={announce}
         renderRoomPanel={(interactive) => (
           <RoomPanel

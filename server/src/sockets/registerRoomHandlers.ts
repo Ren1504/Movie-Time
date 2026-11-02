@@ -99,6 +99,15 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       if (result.ok) broadcastRoom(session.code)
     })
 
+    socket.on('room:set-ambience', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const session = socket.data.session
+      if (!session) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      const result = rooms.setAmbience(session.code, session.memberId, payload?.ambience)
+      ack(result)
+      if (result.ok) broadcastRoom(session.code)
+    })
+
     socket.on('stream:access', async (ack) => {
       if (typeof ack !== 'function') return
       const session = socket.data.session

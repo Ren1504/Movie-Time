@@ -8,4 +8,11 @@ export const sceneConfig = {
     far: 200,
   },
   background: '#050404',
+  // Sharp on high-resolution screens, without drawing four times the pixels.
+  maxPixelRatio: 1.5,
+  frameLimits: {
+    streamingFps: 60,
+    // Someone watching from another window isn't moving around in the theatre.
+    unfocusedFps: 30,
+  },
 } as const

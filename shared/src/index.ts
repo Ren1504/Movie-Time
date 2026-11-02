@@ -37,12 +37,16 @@ export interface RoomMember {
   pose: PlayerPose | null
 }
 
+export const AMBIENCE_IDS = ['classic', 'horror', 'scifi', 'futuristic', 'cozy'] as const
+export type AmbienceId = (typeof AMBIENCE_IDS)[number]
+
 export interface RoomSnapshot {
   code: string
   ownerId: string
   members: RoomMember[]
   /** True while the host is sharing their screen. */
   streaming: boolean
+  ambience: AmbienceId
 }
 
 /** What a client needs to connect to the media server. */
@@ -70,6 +74,7 @@ export type RoomErrorCode =
   | 'INVALID_SEAT'
   | 'SEAT_TAKEN'
   | 'STREAM_UNAVAILABLE'
+  | 'INVALID_AMBIENCE'
 
 export type RoomResult<T> =
   | { ok: true; value: T }
@@ -111,6 +116,11 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<null>) => void,
   ) => void
   'seat:release': () => void
+  /** Host only. */
+  'room:set-ambience': (
+    payload: { ambience: AmbienceId },
+    ack: (result: RoomResult<null>) => void,
+  ) => void
   /** Only the host's token allows publishing to the media server. */
   'stream:access': (ack: (result: RoomResult<StreamAccess>) => void) => void
   /** Host only. */

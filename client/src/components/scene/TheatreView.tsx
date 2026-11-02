@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { RoomMember } from '@movie/shared'
+import type { AmbienceId, RoomMember } from '@movie/shared'
 import type { SeatPrompt } from '../../systems/seats/useSeatInteraction'
 import {
   allowStreamAudio,
@@ -24,6 +24,7 @@ interface TheatreViewProps {
   members: RoomMember[]
   localMemberId: string
   ownerId: string
+  ambience: AmbienceId
   onSeatDenied: (message: string) => void
   /** Renders room details, which can only be clicked when the mouse is free. */
   renderRoomPanel: (interactive: boolean) => ReactNode
@@ -33,6 +34,7 @@ export function TheatreView({
   members,
   localMemberId,
   ownerId,
+  ambience,
   onSeatDenied,
   renderRoomPanel,
 }: TheatreViewProps) {
@@ -108,7 +110,9 @@ export function TheatreView({
           onAction={handleEnter}
         />
       )}
-      {isHost && <HostStreamPanel interactive={gameState !== 'playing'} />}
+      {isHost && (
+        <HostStreamPanel interactive={gameState !== 'playing'} ambience={ambience} />
+      )}
       {renderRoomPanel(gameState !== 'playing')}
     </>
   )

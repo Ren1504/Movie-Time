@@ -1,10 +1,8 @@
-import { theatreConfig } from '../../config/theatreConfig'
+import { ambienceMaterial } from '../../systems/ambience/ambienceState'
 import { createFabricTexture } from '../../utils/proceduralTextures'
 import { frameGeometry, velvetGeometry } from './seatModel'
 import { StaticInstances } from './StaticInstances'
 import { seatPositions } from './theatreLayout'
-
-const { colors } = theatreConfig
 
 const velvetTexture = createFabricTexture(0.3, 4, 128)
 
@@ -18,7 +16,7 @@ export function TheatreSeats() {
         receiveShadow
       >
         <meshStandardMaterial
-          color={colors.velvet}
+          ref={ambienceMaterial('velvet')}
           map={velvetTexture}
           bumpMap={velvetTexture}
           bumpScale={0.5}
@@ -31,7 +29,7 @@ export function TheatreSeats() {
         castShadow
         receiveShadow
       >
-        <meshStandardMaterial color={colors.seatFrame} roughness={0.6} />
+        <meshStandardMaterial ref={ambienceMaterial('seatFrame')} roughness={0.6} />
       </StaticInstances>
     </group>
   )

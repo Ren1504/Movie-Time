@@ -1,10 +1,11 @@
 import { CylinderGeometry } from 'three'
 import { theatreConfig } from '../../config/theatreConfig'
+import { ambienceMaterial } from '../../systems/ambience/ambienceState'
 import { createBoxBatch, type Box, type Vec3 } from '../../utils/boxBatch'
 import { StaticInstances } from './StaticInstances'
 import { frontZ, halfWidth } from './theatreLayout'
 
-const { room, colors } = theatreConfig
+const { room } = theatreConfig
 
 const BEAM_DROP = 0.5
 const BEAM_WIDTH = 0.7
@@ -40,10 +41,10 @@ export function TheatreCeiling() {
   return (
     <group>
       <mesh geometry={ceiling}>
-        <meshStandardMaterial color={colors.ceiling} roughness={1} />
+        <meshStandardMaterial ref={ambienceMaterial('ceiling')} roughness={1} />
       </mesh>
       <StaticInstances geometry={downlight} positions={downlightPositions}>
-        <meshBasicMaterial color={colors.warmEmissive} toneMapped={false} />
+        <meshBasicMaterial ref={ambienceMaterial('fixture')} toneMapped={false} />
       </StaticInstances>
     </group>
   )

@@ -108,14 +108,14 @@ export function CinemaDisplay({ position }: { position: [number, number, number]
         <planeGeometry args={[screen.width, screen.height]} />
         {showVideo ? (
           // Black bars around video that doesn't match the screen's shape.
-          <meshBasicMaterial color="#000000" toneMapped={false} />
+          <meshBasicMaterial color="#000000" fog={false} toneMapped={false} />
         ) : (
-          <meshBasicMaterial key={message} map={messageTexture} toneMapped={false} />
+          <meshBasicMaterial key={message} map={messageTexture} fog={false} toneMapped={false} />
         )}
       </mesh>
       <mesh ref={videoMeshRef} position={[0, 0, VIDEO_OFFSET]} visible={showVideo}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={videoTexture} toneMapped={false} />
+        <meshBasicMaterial map={videoTexture} fog={false} toneMapped={false} />
       </mesh>
       {showVideo && (
         <mesh
@@ -126,7 +126,7 @@ export function CinemaDisplay({ position }: { position: [number, number, number]
           ]}
         >
           <planeGeometry args={[BADGE_WIDTH, BADGE_HEIGHT]} />
-          <meshBasicMaterial map={liveBadgeTexture} transparent toneMapped={false} />
+          <meshBasicMaterial map={liveBadgeTexture} transparent fog={false} toneMapped={false} />
         </mesh>
       )}
     </group>
