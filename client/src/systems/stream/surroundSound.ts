@@ -7,9 +7,22 @@ const { front, surrounds, sub, reverb, panner: pannerConfig } = surroundConfig
 const LEFT = 0
 const RIGHT = 1
 
+const VOLUME_KEY = 'streamVolume'
+
+/** Remembered per browser. Storage can be unavailable, which only loses the setting. */
+export function getSavedVolume() {
+  try {
+    const saved = Number(localStorage.getItem(VOLUME_KEY) ?? 1)
+    return Number.isFinite(saved) ? Math.min(Math.max(saved, 0), 1) : 1
+  } catch {
+    return 1
+  }
+}
+
 interface SurroundGraph {
   context: AudioContext
   input: GainNode
+  master: GainNode
   source: MediaStreamAudioSourceNode | null
 }
 
@@ -45,7 +58,9 @@ function createGraph(): SurroundGraph {
 
   // Stops several speakers adding up to distortion on loud scenes.
   const limiter = context.createDynamicsCompressor()
-  limiter.connect(context.destination)
+  const master = context.createGain()
+  master.gain.value = getSavedVolume()
+  limiter.connect(master).connect(context.destination)
 
   // Mono sources are copied to both sides, so they still use every speaker.
   const input = context.createGain()
@@ -121,7 +136,7 @@ function createGraph(): SurroundGraph {
   reverbGain.gain.value = reverb.gain
   input.connect(reverbFilter).connect(convolver).connect(reverbGain).connect(limiter)
 
-  return { context, input, source: null }
+  return { context, input, master, source: null }
 }
 
 export function playThroughSurround(stream: MediaStream) {
@@ -130,6 +145,15 @@ export function playThroughSurround(stream: MediaStream) {
   graph.source = graph.context.createMediaStreamSource(stream)
   graph.source.connect(graph.input)
   void graph.context.resume().catch(() => {})
+}
+
+export function setSurroundVolume(volume: number) {
+  if (graph) graph.master.gain.value = volume
+  try {
+    localStorage.setItem(VOLUME_KEY, String(volume))
+  } catch {
+    // The volume still applies until the page closes.
+  }
 }
 
 export function stopSurround() {

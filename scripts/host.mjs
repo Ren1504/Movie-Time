@@ -73,6 +73,7 @@ const children = [
       ...process.env,
       NODE_ENV: 'production',
       PORT: String(APP_PORT),
+      PUBLIC_ORIGIN: `http://${publicAddress}:${APP_PORT}`,
       LIVEKIT_API_KEY: apiKey,
       LIVEKIT_API_SECRET: apiSecret,
     },

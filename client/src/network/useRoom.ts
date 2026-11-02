@@ -33,6 +33,8 @@ const ERROR_MESSAGES: Record<RoomErrorCode, string> = {
   INVALID_SEAT: "That seat doesn't exist.",
   SEAT_TAKEN: 'That seat is taken.',
   STREAM_UNAVAILABLE: 'Streaming is unavailable right now.',
+  INVALID_MESSAGE: 'That message is empty or too long.',
+  RATE_LIMITED: 'Too many attempts. Wait a moment and try again.',
 }
 
 function syncGameState(room: RoomSnapshot) {
@@ -53,6 +55,7 @@ const END_MESSAGES: Record<RoomEndReason, string> = {
 interface CurrentRoom {
   memberId: string
   room: RoomSnapshot
+  inviteOrigin: string | null
 }
 
 export function useRoom() {
@@ -63,13 +66,19 @@ export function useRoom() {
   const [notice, setNotice] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState<string | null>(null)
   const memberIdRef = useRef<string | null>(null)
+  const streamingRef = useRef(false)
 
   const enter = useCallback((session: RoomSession) => {
     sessionStorage.setItem(TOKEN_KEY, session.token)
     memberIdRef.current = session.memberId
     syncGameState(session.room)
     setAmbienceTarget(session.room.ambience, true)
-    setCurrent({ memberId: session.memberId, room: session.room })
+    streamingRef.current = session.room.streaming
+    setCurrent({
+      memberId: session.memberId,
+      room: session.room,
+      inviteOrigin: session.inviteOrigin,
+    })
   }, [])
 
   const exit = useCallback((message: string | null) => {
@@ -100,6 +109,10 @@ export function useRoom() {
     const handleUpdated = (room: RoomSnapshot) => {
       syncGameState(room)
       setAmbienceTarget(room.ambience)
+      if (room.streaming !== streamingRef.current) {
+        streamingRef.current = room.streaming
+        setAnnouncement(room.streaming ? 'The host is now live.' : 'The host stopped sharing.')
+      }
       setCurrent((previous) => previous && { ...previous, room })
     }
     const handleEnded = (reason: RoomEndReason) => exit(END_MESSAGES[reason])

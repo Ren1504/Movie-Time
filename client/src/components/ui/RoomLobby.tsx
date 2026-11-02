@@ -11,7 +11,12 @@ interface RoomLobbyProps {
 
 export function RoomLobby({ connected, busy, notice, onCreate, onJoin }: RoomLobbyProps) {
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
+  // Invite links carry the code, so friends only need to add a name.
+  const [code, setCode] = useState(() =>
+    (new URLSearchParams(window.location.search).get('room') ?? '')
+      .toUpperCase()
+      .slice(0, ROOM_CODE_LENGTH),
+  )
   const hasName = name.trim().length > 0
   const canAct = connected && !busy && hasName
 

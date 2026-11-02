@@ -37,6 +37,19 @@ export interface RoomMember {
   pose: PlayerPose | null
 }
 
+export const MAX_CHAT_LENGTH = 300
+// Number keys 1 to 6 send these, in this order.
+export const REACTIONS = ['👍', '😂', '😮', '😢', '❤️', '👏'] as const
+export type Reaction = (typeof REACTIONS)[number]
+
+export interface ChatMessage {
+  id: string
+  memberId: string
+  /** Set by the server, so nobody can write as someone else. */
+  name: string
+  text: string
+}
+
 export const AMBIENCE_IDS = ['classic', 'horror', 'scifi', 'futuristic', 'cozy'] as const
 export type AmbienceId = (typeof AMBIENCE_IDS)[number]
 
@@ -60,6 +73,8 @@ export interface RoomSession {
   token: string
   memberId: string
   room: RoomSnapshot
+  /** The public address for invite links, when the server knows it. */
+  inviteOrigin: string | null
 }
 
 export type RoomErrorCode =
@@ -75,6 +90,8 @@ export type RoomErrorCode =
   | 'SEAT_TAKEN'
   | 'STREAM_UNAVAILABLE'
   | 'INVALID_AMBIENCE'
+  | 'INVALID_MESSAGE'
+  | 'RATE_LIMITED'
 
 export type RoomResult<T> =
   | { ok: true; value: T }
@@ -116,6 +133,11 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<null>) => void,
   ) => void
   'seat:release': () => void
+  'chat:send': (
+    payload: { text: string },
+    ack: (result: RoomResult<null>) => void,
+  ) => void
+  'reaction:send': (payload: { reaction: Reaction }) => void
   /** Host only. */
   'room:set-ambience': (
     payload: { ambience: AmbienceId },
@@ -134,6 +156,8 @@ export interface ServerToClientEvents {
   'room:ended': (reason: RoomEndReason) => void
   'room:member-left': (departure: MemberDeparture) => void
   'room:member-joined': (name: string) => void
+  'chat:message': (message: ChatMessage) => void
+  'reaction:shown': (payload: { memberId: string; reaction: Reaction }) => void
   /** Only the members who moved since the last update. */
   'players:poses': (poses: (PlayerPose & { id: string })[]) => void
 }

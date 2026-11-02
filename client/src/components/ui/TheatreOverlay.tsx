@@ -10,6 +10,8 @@ const CONTROLS = [
   ['W A S D', 'Walk'],
   ['Mouse', 'Look around'],
   ['E', 'Sit or stand'],
+  ['T', 'Chat'],
+  ['1 to 6', 'React'],
   ['Esc', 'Pause'],
 ]
 

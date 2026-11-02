@@ -16,6 +16,7 @@ import {
 import { playerConfig } from '../../config/playerConfig'
 import { seatConfig } from '../../config/seatConfig'
 import { REQUEST_TIMEOUT_MS, socket } from '../../network/socket'
+import { isTyping } from '../../utils/isTyping'
 import { localSeat, occupiedSeatIds } from './seatOccupancy'
 
 export type SeatPrompt = 'sit' | 'stand'
@@ -74,6 +75,7 @@ export function useSeatInteraction(
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event)) return
       if (event.code === 'KeyE' && !event.repeat && document.pointerLockElement) {
         stateRef.current.interactPressed = true
       }

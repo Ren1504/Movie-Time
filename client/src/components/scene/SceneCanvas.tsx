@@ -8,6 +8,7 @@ import { remotePoses } from '../../systems/multiplayer/remotePoses'
 import { StaticColliders } from '../../systems/physics/StaticColliders'
 import { occupiedSeatIds } from '../../systems/seats/seatOccupancy'
 import type { SeatPrompt } from '../../systems/seats/useSeatInteraction'
+import { ReactionBursts } from '../avatars/ReactionBursts'
 import { RemoteAvatars } from '../avatars/RemoteAvatars'
 import {
   PlayerController,
@@ -86,6 +87,7 @@ export function SceneCanvas({
       <AmbienceController />
       <Theatre />
       <RemoteAvatars members={members} localMemberId={localMemberId} />
+      <ReactionBursts members={members} localMemberId={localMemberId} />
       <SurroundListener />
       <Suspense fallback={null}>
         <Physics timeStep="vary" debug={physicsDebug}>

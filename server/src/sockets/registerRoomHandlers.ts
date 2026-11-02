@@ -1,14 +1,27 @@
+import { randomUUID } from 'node:crypto'
 import type { Server, Socket } from 'socket.io'
-import type {
-  ClientToServerEvents,
-  RoomEndReason,
-  RoomResult,
-  RoomSession,
-  ServerToClientEvents,
+import {
+  MAX_CHAT_LENGTH,
+  REACTIONS,
+  type ClientToServerEvents,
+  type RoomEndReason,
+  type RoomResult,
+  type RoomSession,
+  type ServerToClientEvents,
 } from '@movie/shared'
 import { serverConfig } from '../config.ts'
 import type { MemberEntry, RoomManager } from '../rooms/RoomManager.ts'
 import { closeStream, createStreamToken, removeFromStream } from '../streaming/liveKit.ts'
+import { RateLimiter } from '../utils/rateLimiter.ts'
+
+const { rateLimits } = serverConfig
+
+function parseChatText(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  // Only control characters go, as emoji rely on the other invisible ones.
+  const text = value.replace(/\p{Cc}/gu, ' ').trim()
+  return text.length > 0 && text.length <= MAX_CHAT_LENGTH ? text : null
+}
 
 interface SocketData {
   /** Who this connection is. Set only here, and never taken from a message. */
@@ -21,6 +34,18 @@ type RoomSocket = Socket<ClientToServerEvents, ServerToClientEvents, object, Soc
 
 export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
   const removalTimers = new Map<string, NodeJS.Timeout>()
+  const failedJoins = new RateLimiter(rateLimits.failedJoinsPerMinute, 60_000)
+  const roomCreations = new RateLimiter(rateLimits.roomsCreatedPerMinute, 60_000)
+  const chatMessages = new RateLimiter(rateLimits.chatMessagesPer10Seconds, 10_000)
+  const reactions = new RateLimiter(rateLimits.reactionsPer5Seconds, 5_000)
+
+  const clientAddress = (socket: RoomSocket) => {
+    const forwarded = socket.handshake.headers['x-forwarded-for']
+    if (serverConfig.trustProxy && typeof forwarded === 'string') {
+      return forwarded.split(',')[0].trim()
+    }
+    return socket.handshake.address
+  }
 
   const cancelRemoval = (memberId: string) => {
     clearTimeout(removalTimers.get(memberId))
@@ -68,6 +93,7 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       token: member.token,
       memberId: member.id,
       room: rooms.getSnapshot(code)!,
+      inviteOrigin: serverConfig.publicOrigin,
     }
   }
 
@@ -99,6 +125,33 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       if (result.ok) broadcastRoom(session.code)
     })
 
+    socket.on('chat:send', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const session = socket.data.session
+      if (!session) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      const text = parseChatText(payload?.text)
+      if (!text) return ack({ ok: false, error: 'INVALID_MESSAGE' })
+      if (!chatMessages.tryRecord(session.memberId)) {
+        return ack({ ok: false, error: 'RATE_LIMITED' })
+      }
+      const member = rooms.getMember(session.code, session.memberId)
+      if (!member) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      ack({ ok: true, value: null })
+      io.to(session.code).emit('chat:message', {
+        id: randomUUID(),
+        memberId: member.id,
+        name: member.name,
+        text,
+      })
+    })
+
+    socket.on('reaction:send', (payload) => {
+      const session = socket.data.session
+      const reaction = REACTIONS.find((item) => item === payload?.reaction)
+      if (!session || !reaction || !reactions.tryRecord(session.memberId)) return
+      io.to(session.code).emit('reaction:shown', { memberId: session.memberId, reaction })
+    })
+
     socket.on('room:set-ambience', (payload, ack) => {
       if (typeof ack !== 'function') return
       const session = socket.data.session
@@ -120,7 +173,9 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
         )
         // Friends need this computer's public address, and the host needs localhost.
         const { hostname } = new URL(`http://${socket.handshake.headers.host}`)
-        const url = `ws://${hostname}:${serverConfig.liveKit.clientPort}`
+        const url =
+          serverConfig.liveKit.publicUrl ??
+          `ws://${hostname}:${serverConfig.liveKit.clientPort}`
         ack({ ok: true, value: { url, token } })
       } catch {
         ack({ ok: false, error: 'STREAM_UNAVAILABLE' })
@@ -151,6 +206,9 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
     socket.on('room:create', (payload, ack) => {
       if (typeof ack !== 'function') return
       if (socket.data.session) return ack({ ok: false, error: 'ALREADY_IN_ROOM' })
+      if (!roomCreations.tryRecord(clientAddress(socket))) {
+        return ack({ ok: false, error: 'RATE_LIMITED' })
+      }
       const result = rooms.createRoom(payload?.name, socket.id)
       ack(result.ok ? { ok: true, value: enterRoom(socket, result.value) } : result)
     })
@@ -158,7 +216,10 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
     socket.on('room:join', (payload, ack) => {
       if (typeof ack !== 'function') return
       if (socket.data.session) return ack({ ok: false, error: 'ALREADY_IN_ROOM' })
+      const address = clientAddress(socket)
+      if (failedJoins.isBlocked(address)) return ack({ ok: false, error: 'RATE_LIMITED' })
       const result = rooms.joinRoom(payload?.code, payload?.name, socket.id)
+      if (!result.ok && result.error === 'ROOM_NOT_FOUND') failedJoins.tryRecord(address)
       ack(result.ok ? { ok: true, value: enterRoom(socket, result.value) } : result)
       if (result.ok) {
         socket.to(result.value.code).emit('room:member-joined', result.value.member.name)

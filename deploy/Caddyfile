@@ -1,0 +1,7 @@
+{$DOMAIN} {
+	reverse_proxy app:3001
+}
+
+live.{$DOMAIN} {
+	reverse_proxy livekit:7880
+}

@@ -19,10 +19,23 @@ export const serverConfig = {
   maxMessageBytes: 10_000,
   // How often the movement of each room's players is sent out.
   poseBroadcastHz: 15,
+  // The address friends open, for invite links. Unknown in development.
+  publicOrigin: process.env.PUBLIC_ORIGIN ?? null,
+  // Only true behind a proxy that sets this header, or anyone could fake their address.
+  trustProxy: process.env.TRUST_PROXY === 'true',
+  rateLimits: {
+    // Failed joins only, so this slows code guessing without affecting friends.
+    failedJoinsPerMinute: 20,
+    roomsCreatedPerMinute: 20,
+    chatMessagesPer10Seconds: 8,
+    reactionsPer5Seconds: 10,
+  },
   liveKit: {
     // How this server reaches LiveKit, which runs beside it.
     url: process.env.LIVEKIT_URL ?? 'ws://localhost:7880',
-    // Browsers use the address they opened the app on, with this port.
+    // Set when browsers connect through a domain, such as wss://live.example.com.
+    publicUrl: process.env.LIVEKIT_PUBLIC_URL ?? null,
+    // Otherwise they use the address they opened the app on, with this port.
     clientPort: 7880,
     apiKey: liveKitApiKey,
     apiSecret: liveKitApiSecret,

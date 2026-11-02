@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isTyping } from '../../utils/isTyping'
 
 // Physical key positions, so WASD works on any keyboard layout.
 const MOVEMENT_CODES = ['KeyW', 'KeyA', 'KeyS', 'KeyD']
@@ -11,6 +12,10 @@ export function useMovementKeys() {
     const pressed = pressedRef.current
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event)) {
+        pressed.clear()
+        return
+      }
       if (MOVEMENT_CODES.includes(event.code)) pressed.add(event.code)
     }
     const handleKeyUp = (event: KeyboardEvent) => {

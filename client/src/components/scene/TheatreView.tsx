@@ -7,6 +7,7 @@ import {
   disconnectStream,
 } from '../../systems/stream/streamConnection'
 import type { PlayerControllerHandle } from '../player/PlayerController'
+import { ChatBox } from '../ui/ChatBox'
 import { HostStreamPanel } from '../ui/HostStreamPanel'
 import { SeatPromptLabel } from '../ui/SeatPromptLabel'
 import { TheatreOverlay } from '../ui/TheatreOverlay'
@@ -114,6 +115,7 @@ export function TheatreView({
         <HostStreamPanel interactive={gameState !== 'playing'} ambience={ambience} />
       )}
       {renderRoomPanel(gameState !== 'playing')}
+      <ChatBox />
     </>
   )
 }

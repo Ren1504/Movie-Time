@@ -1,4 +1,5 @@
 import type { RoomSnapshot } from '@movie/shared'
+import { VolumeControl } from './VolumeControl'
 
 interface RoomPanelProps {
   room: RoomSnapshot
@@ -8,6 +9,7 @@ interface RoomPanelProps {
   interactive: boolean
   onLeave: () => void
   onClose: () => void
+  inviteOrigin: string | null
 }
 
 function copyText(text: string) {
@@ -31,8 +33,10 @@ export function RoomPanel({
   interactive,
   onLeave,
   onClose,
+  inviteOrigin,
 }: RoomPanelProps) {
   const isOwner = room.ownerId === memberId
+  const inviteLink = `${inviteOrigin ?? window.location.origin}/?room=${room.code}`
 
   return (
     <aside className="room-panel">
@@ -59,6 +63,12 @@ export function RoomPanel({
         ))}
       </ul>
       {!connected && <p role="status">Connection lost. Reconnecting...</p>}
+      {interactive && !isOwner && <VolumeControl />}
+      {interactive && (
+        <button type="button" onClick={() => copyText(inviteLink)}>
+          Copy Invite Link
+        </button>
+      )}
       {interactive && (
         <button type="button" onClick={onLeave}>
           Leave Room
