@@ -1,0 +1,13 @@
+{
+  "name": "movie-with-friends",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "lint": "npm run lint --workspace client"
+  }
+}
