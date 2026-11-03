@@ -12,6 +12,8 @@ const CONTROLS = [
   ['E', 'Sit or stand'],
   ['T', 'Chat'],
   ['1 to 6', 'React'],
+  ['7', 'Whistle'],
+  ['8', 'Clap'],
   ['Esc', 'Pause'],
 ]
 

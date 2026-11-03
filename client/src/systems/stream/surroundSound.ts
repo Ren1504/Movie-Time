@@ -23,6 +23,10 @@ interface SurroundGraph {
   context: AudioContext
   input: GainNode
   master: GainNode
+  /** Where positioned sounds in the room join the mix. */
+  output: AudioNode
+  /** Sends a sound into the room's echo. */
+  reverbInput: AudioNode
   source: MediaStreamAudioSourceNode | null
 }
 
@@ -136,11 +140,17 @@ function createGraph(): SurroundGraph {
   reverbGain.gain.value = reverb.gain
   input.connect(reverbFilter).connect(convolver).connect(reverbGain).connect(limiter)
 
-  return { context, input, master, source: null }
+  return { context, input, master, output: limiter, reverbInput: reverbFilter, source: null }
+}
+
+/** Shared by the stream and sounds made in the room, so one volume covers both. */
+export function getSurroundGraph() {
+  graph ??= createGraph()
+  return graph
 }
 
 export function playThroughSurround(stream: MediaStream) {
-  graph ??= createGraph()
+  const graph = getSurroundGraph()
   graph.source?.disconnect()
   graph.source = graph.context.createMediaStreamSource(stream)
   graph.source.connect(graph.input)

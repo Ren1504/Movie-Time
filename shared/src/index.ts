@@ -38,9 +38,16 @@ export interface RoomMember {
 }
 
 export const MAX_CHAT_LENGTH = 300
-// Number keys 1 to 6 send these, in this order.
-export const REACTIONS = ['👍', '😂', '😮', '😢', '❤️', '👏'] as const
+// These also play a sound for everyone, so they are limited more tightly.
+export const SOUND_REACTIONS = ['whistle', 'clap'] as const
+export type SoundReaction = (typeof SOUND_REACTIONS)[number]
+// Number keys 1 to 8 send these, in this order.
+export const REACTIONS = ['👍', '😂', '😮', '😢', '❤️', '👏', ...SOUND_REACTIONS] as const
 export type Reaction = (typeof REACTIONS)[number]
+
+export function isSoundReaction(reaction: Reaction): reaction is SoundReaction {
+  return (SOUND_REACTIONS as readonly string[]).includes(reaction)
+}
 
 export interface ChatMessage {
   id: string

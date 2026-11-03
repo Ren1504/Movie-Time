@@ -29,6 +29,7 @@ export const serverConfig = {
     roomsCreatedPerMinute: 20,
     chatMessagesPer10Seconds: 8,
     reactionsPer5Seconds: 10,
+    soundReactionsPer5Seconds: 3,
   },
   liveKit: {
     // How this server reaches LiveKit, which runs beside it.

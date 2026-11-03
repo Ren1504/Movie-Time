@@ -30,7 +30,7 @@ export function ChatBox() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event) || event.repeat) return
-      const reactionIndex = /^Digit([1-6])$/.exec(event.code)
+      const reactionIndex = /^Digit([1-8])$/.exec(event.code)
       if (reactionIndex && document.pointerLockElement) {
         const reaction = REACTIONS[Number(reactionIndex[1]) - 1]
         socket.emit('reaction:send', { reaction })

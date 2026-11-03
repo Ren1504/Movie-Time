@@ -49,9 +49,11 @@ function handleTrackSubscribed(track: RemoteTrack, publication: RemoteTrackPubli
     updateStreamState({ hasVideo: true })
   } else if (publication.source === Track.Source.ScreenShareAudio) {
     // Chromium only delivers remote audio to Web Audio while an element plays it.
-    // It's muted, as the sound comes out through the surround speakers instead.
+    // It's silenced, as the sound comes out through the surround speakers instead.
+    // Volume as well as muted, because LiveKit's startAudio unmutes every element.
     const element = track.attach()
     element.muted = true
+    element.volume = 0
     audioElements.add(element)
     if (track.mediaStream) playThroughSurround(track.mediaStream)
   }

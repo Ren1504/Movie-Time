@@ -3,6 +3,7 @@ import type { Server, Socket } from 'socket.io'
 import {
   MAX_CHAT_LENGTH,
   REACTIONS,
+  isSoundReaction,
   type ClientToServerEvents,
   type RoomEndReason,
   type RoomResult,
@@ -38,6 +39,7 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
   const roomCreations = new RateLimiter(rateLimits.roomsCreatedPerMinute, 60_000)
   const chatMessages = new RateLimiter(rateLimits.chatMessagesPer10Seconds, 10_000)
   const reactions = new RateLimiter(rateLimits.reactionsPer5Seconds, 5_000)
+  const soundReactions = new RateLimiter(rateLimits.soundReactionsPer5Seconds, 5_000)
 
   const clientAddress = (socket: RoomSocket) => {
     const forwarded = socket.handshake.headers['x-forwarded-for']
@@ -148,7 +150,9 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
     socket.on('reaction:send', (payload) => {
       const session = socket.data.session
       const reaction = REACTIONS.find((item) => item === payload?.reaction)
-      if (!session || !reaction || !reactions.tryRecord(session.memberId)) return
+      if (!session || !reaction) return
+      if (isSoundReaction(reaction) && !soundReactions.tryRecord(session.memberId)) return
+      if (!reactions.tryRecord(session.memberId)) return
       io.to(session.code).emit('reaction:shown', { memberId: session.memberId, reaction })
     })
 
