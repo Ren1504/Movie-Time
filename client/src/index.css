@@ -86,6 +86,25 @@ body,
   background: #ffffff1a;
 }
 
+.theatre-overlay .mobile-notice-text {
+  margin: 0 0 16px;
+  color: #f2e6d8;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.mobile-notice-link {
+  display: block;
+  margin: 0 0 16px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff12;
+  color: #ffb56b;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 .room-field {
   display: block;
   margin-bottom: 12px;
