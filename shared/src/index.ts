@@ -35,7 +35,16 @@ export interface RoomMember {
   seatId: string | null
   /** Null until the member has first moved. */
   pose: PlayerPose | null
+  /** The bucket they're holding, if any. */
+  popcorn: PopcornFlavor | null
 }
+
+export const POPCORN_FLAVORS = ['caramel', 'salted', 'cheese'] as const
+export type PopcornFlavor = (typeof POPCORN_FLAVORS)[number]
+
+// The booth stands in the lobby through the right wall, near the screen.
+// Players must be within reach of its centre to take a bucket.
+export const POPCORN_BOOTH = { x: 18.3, z: -6.2, reach: 3 } as const
 
 export const MAX_CHAT_LENGTH = 300
 // These also play a sound for everyone, so they are limited more tightly.
@@ -99,6 +108,8 @@ export type RoomErrorCode =
   | 'INVALID_AMBIENCE'
   | 'INVALID_MESSAGE'
   | 'RATE_LIMITED'
+  | 'INVALID_FLAVOR'
+  | 'TOO_FAR'
 
 export type RoomResult<T> =
   | { ok: true; value: T }
@@ -140,6 +151,12 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<null>) => void,
   ) => void
   'seat:release': () => void
+  /** Only at the booth. Taking a flavor replaces any bucket already held. */
+  'popcorn:take': (
+    payload: { flavor: PopcornFlavor },
+    ack: (result: RoomResult<null>) => void,
+  ) => void
+  'popcorn:drop': () => void
   'chat:send': (
     payload: { text: string },
     ack: (result: RoomResult<null>) => void,

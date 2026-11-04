@@ -45,7 +45,8 @@ export function createSignTexture(text: string, background: string): CanvasTextu
   context.font = 'bold 64px system-ui, sans-serif'
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.fillText(text, canvas.width / 2, canvas.height / 2)
+  // Longer words are squeezed to fit, keeping a margin at each side.
+  context.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width - 24)
 
   const texture = new CanvasTexture(canvas)
   texture.colorSpace = SRGBColorSpace

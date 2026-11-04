@@ -2,12 +2,15 @@ import { randomInt, randomUUID } from 'node:crypto'
 import {
   AMBIENCE_IDS,
   MAX_NAME_LENGTH,
+  POPCORN_BOOTH,
+  POPCORN_FLAVORS,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
   isValidSeatId,
   type AmbienceId,
   type MemberDeparture,
   type PlayerPose,
+  type PopcornFlavor,
   type RoomResult,
   type RoomSnapshot,
 } from '@movie/shared'
@@ -25,6 +28,7 @@ interface Member {
   seatId: string | null
   pose: PlayerPose | null
   poseChanged: boolean
+  popcorn: PopcornFlavor | null
 }
 
 interface Room {
@@ -141,6 +145,30 @@ export class RoomManager {
     if (member) member.seatId = null
   }
 
+  /** Uses the last position the member reported, so they must be at the booth. */
+  takePopcorn(code: string, memberId: string, rawFlavor: unknown): RoomResult<null> {
+    const member = this.getMember(code, memberId)
+    if (!member) return { ok: false, error: 'NOT_IN_ROOM' }
+    const flavor = POPCORN_FLAVORS.find((item) => item === rawFlavor)
+    if (!flavor) return { ok: false, error: 'INVALID_FLAVOR' }
+    const { pose } = member
+    const nearBooth =
+      pose !== null &&
+      member.seatId === null &&
+      Math.hypot(pose.x - POPCORN_BOOTH.x, pose.z - POPCORN_BOOTH.z) <= POPCORN_BOOTH.reach
+    if (!nearBooth) return { ok: false, error: 'TOO_FAR' }
+    member.popcorn = flavor
+    return { ok: true, value: null }
+  }
+
+  /** Returns false when there was nothing to drop, so nobody needs telling. */
+  dropPopcorn(code: string, memberId: string): boolean {
+    const member = this.getMember(code, memberId)
+    if (!member?.popcorn) return false
+    member.popcorn = null
+    return true
+  }
+
   updatePose(code: string, memberId: string, rawPose: unknown): void {
     const member = this.getMember(code, memberId)
     if (!member || !isValidPose(rawPose)) return
@@ -205,13 +233,16 @@ export class RoomManager {
       streaming: room.streaming,
       ambience: room.ambience,
       // Built field by field, so tokens can never reach other members.
-      members: [...room.members.values()].map(({ id, name, socketId, seatId, pose }) => ({
-        id,
-        name,
-        connected: socketId !== null,
-        seatId,
-        pose,
-      })),
+      members: [...room.members.values()].map(
+        ({ id, name, socketId, seatId, pose, popcorn }) => ({
+          id,
+          name,
+          connected: socketId !== null,
+          seatId,
+          pose,
+          popcorn,
+        }),
+      ),
     }
   }
 
@@ -236,6 +267,7 @@ function createMember(name: string, socketId: string): Member {
     seatId: null,
     pose: null,
     poseChanged: false,
+    popcorn: null,
   }
 }
 

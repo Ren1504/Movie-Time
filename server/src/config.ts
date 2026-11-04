@@ -30,6 +30,8 @@ export const serverConfig = {
     chatMessagesPer10Seconds: 8,
     reactionsPer5Seconds: 10,
     soundReactionsPer5Seconds: 3,
+    // Each change is sent to the whole room, so swapping buckets can't flood it.
+    popcornChangesPer10Seconds: 6,
   },
   liveKit: {
     // How this server reaches LiveKit, which runs beside it.

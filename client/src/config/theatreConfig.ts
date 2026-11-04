@@ -37,6 +37,35 @@ export const theatreConfig = {
     height: 2.6,
     frameWidth: 0.1,
   },
+  // A small room through the right wall, between the stage and the first row.
+  // The popcorn booth's position comes from POPCORN_BOOTH in the shared package.
+  lobby: {
+    doorZ: -6.2,
+    // Along X, out from the theatre wall.
+    width: 6,
+    frontZ: -9.5,
+    backZ: -2.9,
+    height: 3.4,
+  },
+  booth: {
+    counterLength: 3,
+    counterDepth: 0.6,
+    counterHeight: 1.05,
+    // The shelf behind the counter, which holds the popcorn machine. It's only
+    // as long as the machine, leaving room for the vendor beside it.
+    shelfDepth: 0.45,
+    shelfHeight: 1,
+    shelfLength: 1.1,
+    // How far along the counter the vendor stands from its middle.
+    vendorOffsetZ: 1.05,
+    vendorShirt: '#c8102e',
+    vendorHat: '#f5efe6',
+    machineSize: [0.5, 0.8, 0.8],
+    // The three buckets to pick from, spread along the counter.
+    displaySpacing: 0.7,
+    stripeColors: ['#c8102e', '#f5efe6'],
+    flavorColors: { caramel: '#b8741f', salted: '#f4ecd6', cheese: '#ffc21a' },
+  },
   colors: {
     carpet: '#4a1820',
     aisleCarpet: '#26151a',

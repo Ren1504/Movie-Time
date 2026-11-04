@@ -15,6 +15,11 @@ import { SceneCanvas } from './SceneCanvas'
 
 type GameState = 'start' | 'playing' | 'paused'
 
+const SEAT_ACTIONS: Record<SeatPrompt, string> = {
+  sit: 'Sit',
+  stand: 'Stand',
+}
+
 const LOCK_ERROR_NOTICE =
   "Your browser didn't release the mouse yet. Wait a moment and try again."
 
@@ -44,6 +49,8 @@ export function TheatreView({
   const [playerReady, setPlayerReady] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [seatPrompt, setSeatPrompt] = useState<SeatPrompt | null>(null)
+  const [popcornPrompt, setPopcornPrompt] = useState<string | null>(null)
+  const promptAction = seatPrompt ? SEAT_ACTIONS[seatPrompt] : popcornPrompt
 
   const [resumeBlocked, setResumeBlocked] = useState(false)
 
@@ -92,9 +99,10 @@ export function TheatreView({
         onLockChange={handleLockChange}
         onLockError={handleLockError}
         onSeatPromptChange={setSeatPrompt}
+        onPopcornPromptChange={setPopcornPrompt}
       />
-      {gameState === 'playing' && seatPrompt && (
-        <SeatPromptLabel prompt={seatPrompt} />
+      {gameState === 'playing' && promptAction && (
+        <SeatPromptLabel action={promptAction} />
       )}
       {gameState !== 'playing' && (
         <TheatreOverlay

@@ -1,19 +1,34 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { MathUtils, MeshStandardMaterial, type Group } from 'three'
+import { MathUtils, MeshStandardMaterial, Quaternion, type Group } from 'three'
 import type { RoomMember } from '@movie/shared'
 import { remotePoses } from '../../systems/multiplayer/remotePoses'
+import { EatingTimer } from '../../systems/popcorn/eating'
+import { PopcornBucket } from '../popcorn/PopcornBucket'
 import {
   drawnFloorY,
   seatsById,
   spawnPositionFor,
 } from '../theatre/theatreLayout'
 import {
+  CARRIED_BUCKET,
+  LAP_BUCKET,
+  hanging,
+  leftArm,
+  rightArm,
+  type ArmPose,
+} from './armPoses'
+import {
+  ARM_SEGMENT_LENGTH,
   HEAD_PIVOT_HEIGHT,
   HIP_HEIGHT,
   HIP_OFFSET_X,
   LEG_SEGMENT_LENGTH,
   SEATED_DROP,
+  SHOULDER_HEIGHT,
+  SHOULDER_OFFSET_X,
+  SKIN_COLOR,
+  armGeometry,
   headGeometry,
   legGeometry,
   shirtColorFor,
@@ -35,10 +50,27 @@ const MAX_HEAD_TURN = 1.2
 const MAX_HEAD_TILT = 0.7
 const RIGHT_ANGLE = Math.PI / 2
 const HIDE_WITHIN = 0.45
+const HOLD_RESPONSE = 8
+// Eating tips the head down a little, towards the hand.
+const BITE_NOD = 0.15
 
-const skinMaterial = new MeshStandardMaterial({ color: '#e0b597', roughness: 0.8 })
+const skinMaterial = new MeshStandardMaterial({ color: SKIN_COLOR, roughness: 0.8 })
 const legMaterial = new MeshStandardMaterial({ color: '#23252e', roughness: 0.9 })
 const visorMaterial = new MeshStandardMaterial({ color: '#15161c', roughness: 0.4 })
+
+// Reused every frame, so blending poses never allocates.
+const blendUpper = new Quaternion()
+const blendFore = new Quaternion()
+
+function blendPose(from: ArmPose, to: ArmPose, amount: number, into: ArmPose) {
+  into.upper.slerpQuaternions(from.upper, to.upper, amount)
+  into.fore.slerpQuaternions(from.fore, to.fore, amount)
+  return into
+}
+
+const leftPose: ArmPose = { upper: new Quaternion(), fore: new Quaternion() }
+const rightPose: ArmPose = { upper: new Quaternion(), fore: new Quaternion() }
+const scratchPose: ArmPose = { upper: blendUpper, fore: blendFore }
 
 /** The shortest way round from one angle to another, between -PI and PI. */
 function angleBetween(from: number, to: number) {
@@ -68,7 +100,17 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
   const headRef = useRef<Group>(null)
   const thighRefs = useRef<(Group | null)[]>([])
   const shinRefs = useRef<(Group | null)[]>([])
-  const motionRef = useRef({ seatedAmount: 0, speed: 0, stride: 0 })
+  const upperArmRefs = useRef<(Group | null)[]>([])
+  const foreArmRefs = useRef<(Group | null)[]>([])
+  const bucketRef = useRef<Group>(null)
+  const motionRef = useRef({ seatedAmount: 0, speed: 0, stride: 0, holdingAmount: 0 })
+  const eatingRef = useRef<EatingTimer>(null)
+  eatingRef.current ??= new EatingTimer()
+  const shirtMaterial = useMemo(
+    () => new MeshStandardMaterial({ color: shirtColorFor(member.id), roughness: 0.8 }),
+    [member.id],
+  )
+  useEffect(() => () => shirtMaterial.dispose(), [shirtMaterial])
 
   // Starts in place, instead of gliding in from the middle of the room.
   useLayoutEffect(() => {
@@ -123,6 +165,36 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
     )
     head.rotation.x = MathUtils.clamp(pose.pitch, -MAX_HEAD_TILT, MAX_HEAD_TILT)
 
+    const holding = member.popcorn !== null
+    motion.holdingAmount = MathUtils.damp(
+      motion.holdingAmount,
+      Number(holding),
+      HOLD_RESPONSE,
+      frameDelta,
+    )
+    const eating = eatingRef.current!
+    eating.update(frameDelta, holding && seated)
+    const bite = eating.pose()
+    head.rotation.x -= bite.lift * BITE_NOD
+
+    // The left hand carries the bucket, then steadies it on the lap.
+    blendPose(leftArm.carrying, leftArm.holdingLap, motion.seatedAmount, scratchPose)
+    blendPose(hanging, scratchPose, motion.holdingAmount, leftPose)
+    // The right hand rests until a bite, then dips in and comes up to the mouth.
+    blendPose(hanging, rightArm.resting, motion.seatedAmount * motion.holdingAmount, rightPose)
+    blendPose(rightPose, rightArm.inBucket, bite.reach, scratchPose)
+    blendPose(scratchPose, rightArm.atMouth, bite.lift, rightPose)
+    for (const [index, arm] of [leftPose, rightPose].entries()) {
+      upperArmRefs.current[index]?.quaternion.copy(arm.upper)
+      foreArmRefs.current[index]?.quaternion.copy(arm.fore)
+    }
+
+    const bucket = bucketRef.current
+    if (bucket) {
+      bucket.visible = holding
+      bucket.position.lerpVectors(CARRIED_BUCKET, LAP_BUCKET, motion.seatedAmount)
+    }
+
     const moved = Math.hypot(position.x - previousX, position.z - previousZ)
     const speed = seated ? 0 : moved / frameDelta
     motion.speed = MathUtils.damp(motion.speed, speed, SPEED_RESPONSE, frameDelta)
@@ -146,10 +218,30 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
   })
 
   return (
-    <group ref={rootRef}>
-      <mesh geometry={torsoGeometry}>
-        <meshStandardMaterial color={shirtColorFor(member.id)} roughness={0.8} />
-      </mesh>
+    <group ref={rootRef} name={`avatar-${member.id}`}>
+      <mesh geometry={torsoGeometry} material={shirtMaterial} />
+      {[-1, 1].map((side, index) => (
+        <group
+          key={side}
+          ref={(upper) => {
+            upperArmRefs.current[index] = upper
+          }}
+          position={[side * SHOULDER_OFFSET_X, SHOULDER_HEIGHT, 0]}
+        >
+          <mesh geometry={armGeometry} material={shirtMaterial} />
+          <group
+            ref={(fore) => {
+              foreArmRefs.current[index] = fore
+            }}
+            position={[0, -ARM_SEGMENT_LENGTH, 0]}
+          >
+            <mesh geometry={armGeometry} material={skinMaterial} />
+          </group>
+        </group>
+      ))}
+      <group ref={bucketRef} name="avatar-bucket" visible={false}>
+        {member.popcorn && <PopcornBucket flavor={member.popcorn} />}
+      </group>
       <group ref={headRef} position={[0, HEAD_PIVOT_HEIGHT, 0]}>
         <mesh geometry={headGeometry} material={skinMaterial} />
         <mesh geometry={visorGeometry} material={visorMaterial} />

@@ -1,14 +1,8 @@
-import type { SeatPrompt } from '../../systems/seats/useSeatInteraction'
-
-const PROMPT_TEXT: Record<SeatPrompt, string> = {
-  sit: 'Sit',
-  stand: 'Stand',
-}
-
-export function SeatPromptLabel({ prompt }: { prompt: SeatPrompt }) {
+/** Shows what pressing E will do, such as "Sit" or "get Caramel popcorn". */
+export function SeatPromptLabel({ action }: { action: string }) {
   return (
     <div className="seat-prompt" role="status">
-      Press <kbd>E</kbd> to {PROMPT_TEXT[prompt]}
+      Press <kbd>E</kbd> to {action}
     </div>
   )
 }

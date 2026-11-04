@@ -1,11 +1,12 @@
 import { MathUtils } from 'three'
+import { POPCORN_BOOTH, POPCORN_FLAVORS } from '@movie/shared'
 import { theatreConfig } from '../../config/theatreConfig'
 import type { Box, Vec3 } from '../../utils/boxBatch'
 
 // Pure layout data derived from the config, with no rendering code.
 // Keeping it here lets later phases (collision, seat interaction) reuse it.
 
-const { room, seating, door, stage } = theatreConfig
+const { room, seating, door, stage, lobby } = theatreConfig
 
 export const halfWidth = room.width / 2
 export const frontZ = room.screenWallZ
@@ -100,12 +101,48 @@ const seatColliderBoxes: Box[] = Array.from({ length: seating.rows }, (_, row) =
   })),
 ).flat()
 
+/**
+ * The right wall as boxes around the lobby doorway: one either side of it and
+ * one above. Used for both the drawn wall and its collider.
+ */
+export function rightWallAroundDoorway(
+  centerX: number,
+  thickness: number,
+  startZ: number,
+  endZ: number,
+  height: number,
+): Box[] {
+  const doorStart = lobby.doorZ - door.width / 2
+  const doorEnd = lobby.doorZ + door.width / 2
+  return [
+    {
+      center: [centerX, height / 2, (startZ + doorStart) / 2],
+      size: [thickness, height, doorStart - startZ],
+    },
+    {
+      center: [centerX, height / 2, (doorEnd + endZ) / 2],
+      size: [thickness, height, endZ - doorEnd],
+    },
+    {
+      center: [centerX, (door.height + height) / 2, lobby.doorZ],
+      size: [thickness, height - door.height, door.width],
+    },
+  ]
+}
+
 const wallOffset = WALL_COLLIDER_THICKNESS / 2
 const wallColliderBoxes: Box[] = [
-  ...[-1, 1].map((side): Box => ({
-    center: [side * (halfWidth + wallOffset), room.height / 2, frontZ + room.length / 2],
+  {
+    center: [-(halfWidth + wallOffset), room.height / 2, frontZ + room.length / 2],
     size: [WALL_COLLIDER_THICKNESS, room.height, room.length],
-  })),
+  },
+  ...rightWallAroundDoorway(
+    halfWidth + wallOffset,
+    WALL_COLLIDER_THICKNESS,
+    frontZ,
+    backZ,
+    room.height,
+  ),
   ...[frontZ - wallOffset, backZ + wallOffset].map((z): Box => ({
     center: [0, room.height / 2, z],
     size: [room.width, room.height, WALL_COLLIDER_THICKNESS],
@@ -184,6 +221,49 @@ export function drawnFloorY(z: number): number {
   return rowFloorY(MathUtils.clamp(row, 0, lastRow))
 }
 
+// The lobby's inside, from the outer face of the theatre's right wall.
+export const lobbyMinX = halfWidth + room.wallThickness
+export const lobbyMaxX = lobbyMinX + lobby.width
+export const lobbyCenterX = (lobbyMinX + lobbyMaxX) / 2
+export const lobbyCenterZ = (lobby.frontZ + lobby.backZ) / 2
+export const lobbyLength = lobby.backZ - lobby.frontZ
+
+// The counter runs along the far wall, facing back towards the doorway.
+const { booth } = theatreConfig
+export const counterBox: Box = {
+  center: [POPCORN_BOOTH.x, booth.counterHeight / 2, POPCORN_BOOTH.z],
+  size: [booth.counterDepth, booth.counterHeight, booth.counterLength],
+}
+/** Where the three buckets to choose from sit, on top of the counter. */
+export const boothDisplay = POPCORN_FLAVORS.map((flavor, index) => ({
+  flavor,
+  position: [
+    POPCORN_BOOTH.x - 0.05,
+    booth.counterHeight,
+    POPCORN_BOOTH.z + (index - 1) * booth.displaySpacing,
+  ] as Vec3,
+}))
+
+const lobbyColliderBoxes: Box[] = [
+  {
+    center: [lobbyCenterX, -FLOOR_COLLIDER_THICKNESS / 2, lobbyCenterZ],
+    size: [lobby.width + room.wallThickness, FLOOR_COLLIDER_THICKNESS, lobbyLength],
+  },
+  {
+    center: [lobbyMaxX + wallOffset, lobby.height / 2, lobbyCenterZ],
+    size: [WALL_COLLIDER_THICKNESS, lobby.height, lobbyLength],
+  },
+  ...[lobby.frontZ - wallOffset, lobby.backZ + wallOffset].map((z): Box => ({
+    center: [lobbyCenterX, lobby.height / 2, z],
+    size: [lobby.width, lobby.height, WALL_COLLIDER_THICKNESS],
+  })),
+  // Everything behind the counter, so nobody walks round to serve themselves.
+  {
+    center: [(POPCORN_BOOTH.x - booth.counterDepth / 2 + lobbyMaxX) / 2, lobby.height / 2, POPCORN_BOOTH.z],
+    size: [lobbyMaxX - POPCORN_BOOTH.x + booth.counterDepth / 2, lobby.height, booth.counterLength],
+  },
+]
+
 export const collisionBoxes: Box[] = [
   floorColliderBox,
   seatingSlopeBox,
@@ -191,6 +271,7 @@ export const collisionBoxes: Box[] = [
   ...seatColliderBoxes,
   ...wallColliderBoxes,
   stageColliderBox,
+  ...lobbyColliderBoxes,
 ]
 
 const SPAWN_SPACING = 1

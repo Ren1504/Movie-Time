@@ -40,6 +40,7 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
   const chatMessages = new RateLimiter(rateLimits.chatMessagesPer10Seconds, 10_000)
   const reactions = new RateLimiter(rateLimits.reactionsPer5Seconds, 5_000)
   const soundReactions = new RateLimiter(rateLimits.soundReactionsPer5Seconds, 5_000)
+  const popcornChanges = new RateLimiter(rateLimits.popcornChangesPer10Seconds, 10_000)
 
   const clientAddress = (socket: RoomSocket) => {
     const forwarded = socket.handshake.headers['x-forwarded-for']
@@ -205,6 +206,24 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       if (!session) return
       rooms.releaseSeat(session.code, session.memberId)
       broadcastRoom(session.code)
+    })
+
+    socket.on('popcorn:take', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const session = socket.data.session
+      if (!session) return ack({ ok: false, error: 'NOT_IN_ROOM' })
+      if (!popcornChanges.tryRecord(session.memberId)) {
+        return ack({ ok: false, error: 'RATE_LIMITED' })
+      }
+      const result = rooms.takePopcorn(session.code, session.memberId, payload?.flavor)
+      ack(result)
+      if (result.ok) broadcastRoom(session.code)
+    })
+
+    socket.on('popcorn:drop', () => {
+      const session = socket.data.session
+      if (!session || !popcornChanges.tryRecord(session.memberId)) return
+      if (rooms.dropPopcorn(session.code, session.memberId)) broadcastRoom(session.code)
     })
 
     socket.on('room:create', (payload, ack) => {

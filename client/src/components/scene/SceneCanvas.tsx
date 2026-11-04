@@ -9,6 +9,8 @@ import { StaticColliders } from '../../systems/physics/StaticColliders'
 import { occupiedSeatIds } from '../../systems/seats/seatOccupancy'
 import type { SeatPrompt } from '../../systems/seats/useSeatInteraction'
 import { ReactionBursts } from '../avatars/ReactionBursts'
+import { PopcornInteraction } from '../popcorn/PopcornInteraction'
+import { PopcornViewModel } from '../popcorn/PopcornViewModel'
 import { RemoteAvatars } from '../avatars/RemoteAvatars'
 import {
   PlayerController,
@@ -43,6 +45,7 @@ interface SceneCanvasProps {
   onLockError: () => void
   onSeatPromptChange: (prompt: SeatPrompt | null) => void
   onSeatDenied: (message: string) => void
+  onPopcornPromptChange: (action: string | null) => void
 }
 
 export function SceneCanvas({
@@ -54,11 +57,13 @@ export function SceneCanvas({
   onLockError,
   onSeatPromptChange,
   onSeatDenied,
+  onPopcornPromptChange,
 }: SceneCanvasProps) {
   // Fixed on arrival, so people leaving later doesn't move this player.
   const [spawnPosition] = useState(() =>
     spawnPositionFor(members.findIndex((member) => member.id === localMemberId)),
   )
+  const popcorn = members.find((member) => member.id === localMemberId)?.popcorn ?? null
 
   return (
     <Canvas
@@ -66,7 +71,7 @@ export function SceneCanvas({
       dpr={[1, sceneConfig.maxPixelRatio]}
       frameloop="never"
       shadows
-      onCreated={({ gl, camera }) => {
+      onCreated={({ gl, camera, scene }) => {
         if (physicsDebug) Object.assign(window, { debugRenderer: gl })
         // The room itself never moves, so its shadows are only drawn once.
         // Avatars don't cast shadows, as redrawing them every frame is expensive.
@@ -75,6 +80,7 @@ export function SceneCanvas({
         if (physicsDebug) {
           Object.assign(window, {
             debugCamera: camera,
+            debugScene: scene,
             debugOccupiedSeats: occupiedSeatIds,
             debugRemotePoses: remotePoses,
           })
@@ -89,6 +95,12 @@ export function SceneCanvas({
       <RemoteAvatars members={members} localMemberId={localMemberId} />
       <ReactionBursts members={members} localMemberId={localMemberId} />
       <SurroundListener />
+      <PopcornInteraction
+        holding={popcorn}
+        onPromptChange={onPopcornPromptChange}
+        onDenied={onSeatDenied}
+      />
+      {popcorn && <PopcornViewModel flavor={popcorn} />}
       <Suspense fallback={null}>
         <Physics timeStep="vary" debug={physicsDebug}>
           <StaticColliders boxes={collisionBoxes} />

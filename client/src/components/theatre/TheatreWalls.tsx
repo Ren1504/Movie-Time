@@ -2,9 +2,16 @@ import { theatreConfig } from '../../config/theatreConfig'
 import { ambienceMaterial } from '../../systems/ambience/ambienceState'
 import { createBoxBatch, type Box } from '../../utils/boxBatch'
 import { createFabricTexture, createSignTexture } from '../../utils/proceduralTextures'
-import { backZ, doorCenters, frontZ, halfWidth, rearFloorY } from './theatreLayout'
+import {
+  backZ,
+  doorCenters,
+  frontZ,
+  halfWidth,
+  rearFloorY,
+  rightWallAroundDoorway,
+} from './theatreLayout'
 
-const { room, door, colors, lighting } = theatreConfig
+const { room, door, colors, lighting, lobby } = theatreConfig
 
 const WALL_PANEL_DEPTH = 0.08
 const WAINSCOT_DEPTH = 0.06
@@ -19,10 +26,17 @@ const shell = room.wallThickness
 const midZ = frontZ + room.length / 2
 
 const wallBoxes: Box[] = [
-  ...[-1, 1].map((side): Box => ({
-    center: [side * (halfWidth + shell / 2), room.height / 2, midZ],
+  {
+    center: [-(halfWidth + shell / 2), room.height / 2, midZ],
     size: [shell, room.height, room.length + 2 * shell],
-  })),
+  },
+  ...rightWallAroundDoorway(
+    halfWidth + shell / 2,
+    shell,
+    frontZ - shell,
+    backZ + shell,
+    room.height,
+  ),
   {
     center: [0, room.height / 2, backZ + shell / 2],
     size: [room.width, room.height, shell],
@@ -59,10 +73,19 @@ const backPanelBoxes: Box[] = Array.from(
   }),
 )
 
-const woodBoxes: Box[] = [-1, 1].map((side): Box => ({
-  center: [side * (halfWidth - WAINSCOT_DEPTH / 2), WAINSCOT_TOP / 2, midZ],
-  size: [WAINSCOT_DEPTH, WAINSCOT_TOP, room.length],
-}))
+const woodBoxes: Box[] = [
+  {
+    center: [-(halfWidth - WAINSCOT_DEPTH / 2), WAINSCOT_TOP / 2, midZ],
+    size: [WAINSCOT_DEPTH, WAINSCOT_TOP, room.length],
+  },
+  ...rightWallAroundDoorway(
+    halfWidth - WAINSCOT_DEPTH / 2,
+    WAINSCOT_DEPTH,
+    frontZ,
+    backZ,
+    WAINSCOT_TOP,
+  ),
+]
 
 const walls = createBoxBatch(wallBoxes)
 const screenWall = createBoxBatch([screenWallBox])
@@ -92,13 +115,28 @@ const handleBoxes: Box[] = doorCenters.flatMap(([x, y, z]) =>
     size: [0.03, 0.5, 0.03],
   })),
 )
-const doorFrames = createBoxBatch(frameBoxes)
+// Lines the lobby doorway, through the full depth of the wall and its wood.
+const LINING_DEPTH = shell + WAINSCOT_DEPTH + 0.06
+const liningX = halfWidth + (shell - WAINSCOT_DEPTH) / 2
+const liningBoxes: Box[] = [
+  ...[-1, 1].map((side): Box => ({
+    center: [liningX, door.height / 2, lobby.doorZ + side * (door.width / 2 - door.frameWidth / 2)],
+    size: [LINING_DEPTH, door.height, door.frameWidth],
+  })),
+  {
+    center: [liningX, door.height - door.frameWidth / 2, lobby.doorZ],
+    size: [LINING_DEPTH, door.frameWidth, door.width],
+  },
+]
+const doorFrames = createBoxBatch([...frameBoxes, ...liningBoxes])
 const doorLeaves = createBoxBatch(leafBoxes)
 const doorHandles = createBoxBatch(handleBoxes)
 
 const SIGN_WIDTH = 0.6
 const SIGN_HEIGHT = 0.22
 const exitTexture = createSignTexture('EXIT', colors.exitSign)
+const popcornSignTexture = createSignTexture('POPCORN', colors.brass)
+const POPCORN_SIGN_WIDTH = 1
 
 const sconceBoxes: Box[] = [-1, 1].flatMap((side) =>
   lighting.sconces.zPositions.map((z): Box => ({
@@ -152,6 +190,13 @@ export function TheatreWalls() {
           <meshBasicMaterial map={exitTexture} toneMapped={false} />
         </mesh>
       ))}
+      <mesh
+        position={[halfWidth - WAINSCOT_DEPTH - 0.02, door.height + 0.35, lobby.doorZ]}
+        rotation={[0, -Math.PI / 2, 0]}
+      >
+        <planeGeometry args={[POPCORN_SIGN_WIDTH, SIGN_HEIGHT * (POPCORN_SIGN_WIDTH / SIGN_WIDTH)]} />
+        <meshBasicMaterial map={popcornSignTexture} toneMapped={false} />
+      </mesh>
     </group>
   )
 }

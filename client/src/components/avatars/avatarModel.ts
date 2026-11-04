@@ -1,5 +1,4 @@
 import { BoxGeometry, CapsuleGeometry, SphereGeometry } from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 // A simple figure made of shared parts. To change how avatars look, replace this
 // file and the meshes in Avatar.tsx. The origin is on the floor, facing -Z.
@@ -11,21 +10,29 @@ export const HEAD_PIVOT_HEIGHT = 1.5
 // How far the body drops to rest its hips on a seat cushion.
 export const SEATED_DROP = 0.32
 export const NAMEPLATE_HEIGHT = 2.05
+export const SKIN_COLOR = '#e0b597'
 
 const CAPSULE_SEGMENTS = 4
 const ROUND_SEGMENTS = 8
 
-export const torsoGeometry = mergeGeometries([
-  new CapsuleGeometry(0.17, 0.38, CAPSULE_SEGMENTS, ROUND_SEGMENTS)
-    .translate(0, 1.18, 0)
-    .toNonIndexed(),
-  new CapsuleGeometry(0.05, 0.46, CAPSULE_SEGMENTS, ROUND_SEGMENTS)
-    .translate(-0.23, 1.14, 0)
-    .toNonIndexed(),
-  new CapsuleGeometry(0.05, 0.46, CAPSULE_SEGMENTS, ROUND_SEGMENTS)
-    .translate(0.23, 1.14, 0)
-    .toNonIndexed(),
-])
+export const torsoGeometry = new CapsuleGeometry(
+  0.17,
+  0.38,
+  CAPSULE_SEGMENTS,
+  ROUND_SEGMENTS,
+).translate(0, 1.18, 0)
+
+// Arms bend at the elbow, so each is an upper arm and a forearm. Both hang
+// down from their pivot, like the legs.
+export const SHOULDER_HEIGHT = 1.4
+export const SHOULDER_OFFSET_X = 0.23
+export const ARM_SEGMENT_LENGTH = 0.27
+export const armGeometry = new CapsuleGeometry(
+  0.05,
+  ARM_SEGMENT_LENGTH - 0.1,
+  CAPSULE_SEGMENTS,
+  ROUND_SEGMENTS,
+).translate(0, -ARM_SEGMENT_LENGTH / 2, 0)
 
 // Relative to the neck pivot, so the head turns around its base.
 export const headGeometry = new SphereGeometry(0.13, 12, 10).translate(0, 0.13, 0)

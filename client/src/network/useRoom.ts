@@ -35,6 +35,8 @@ const ERROR_MESSAGES: Record<RoomErrorCode, string> = {
   STREAM_UNAVAILABLE: 'Streaming is unavailable right now.',
   INVALID_MESSAGE: 'That message is empty or too long.',
   RATE_LIMITED: 'Too many attempts. Wait a moment and try again.',
+  INVALID_FLAVOR: "That flavor isn't on the menu.",
+  TOO_FAR: 'Walk up to the popcorn booth first.',
 }
 
 function syncGameState(room: RoomSnapshot) {
