@@ -41,6 +41,7 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
   const reactions = new RateLimiter(rateLimits.reactionsPer5Seconds, 5_000)
   const soundReactions = new RateLimiter(rateLimits.soundReactionsPer5Seconds, 5_000)
   const popcornChanges = new RateLimiter(rateLimits.popcornChangesPer10Seconds, 10_000)
+  const popcornBites = new RateLimiter(rateLimits.popcornBitesPer5Seconds, 5_000)
 
   const clientAddress = (socket: RoomSocket) => {
     const forwarded = socket.handshake.headers['x-forwarded-for']
@@ -215,6 +216,16 @@ export function registerRoomHandlers(io: RoomServer, rooms: RoomManager) {
       const session = socket.data.session
       if (!session || !popcornChanges.tryRecord(session.memberId)) return
       if (rooms.dropPopcorn(session.code, session.memberId)) broadcastRoom(session.code)
+    })
+
+    socket.on('popcorn:eat', () => {
+      const session = socket.data.session
+      if (!session) return
+      // Only someone holding a bucket can eat from it.
+      if (!rooms.getMember(session.code, session.memberId)?.popcorn) return
+      if (!popcornBites.tryRecord(session.memberId)) return
+      // The eater animates their own bite, so only the others are told.
+      socket.to(session.code).emit('popcorn:eaten', { memberId: session.memberId })
     })
 
     socket.on('room:create', (payload, ack) => {

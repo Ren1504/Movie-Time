@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto'
 import {
   MAX_NAME_LENGTH,
+  MAX_POSE_LIFT,
   POPCORN_BOOTH,
   POPCORN_FLAVORS,
   ROOM_CODE_ALPHABET,
@@ -158,8 +159,8 @@ export class RoomManager {
   updatePose(code: string, memberId: string, rawPose: unknown): void {
     const member = this.getMember(code, memberId)
     if (!member || !isValidPose(rawPose)) return
-    const { x, z, yaw, pitch } = rawPose
-    member.pose = { x, z, yaw, pitch }
+    const { x, z, yaw, pitch, lift = 0 } = rawPose
+    member.pose = { x, z, yaw, pitch, lift }
     member.poseChanged = true
   }
 
@@ -262,8 +263,13 @@ function isInRange(value: unknown, limit: number): boolean {
 
 function isValidPose(value: unknown): value is PlayerPose {
   if (typeof value !== 'object' || value === null) return false
-  const { x, z, yaw, pitch } = value as Record<string, unknown>
+  const { x, z, yaw, pitch, lift } = value as Record<string, unknown>
+  // Optional, so pages loaded before jumping existed still work.
+  const validLift =
+    lift === undefined ||
+    (isInRange(lift, MAX_POSE_LIFT) && (lift as number) >= 0)
   return (
+    validLift &&
     isInRange(x, MAX_POSE_COORDINATE) &&
     isInRange(z, MAX_POSE_COORDINATE) &&
     isInRange(yaw, MAX_POSE_ANGLE) &&

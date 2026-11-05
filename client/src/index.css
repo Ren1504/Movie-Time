@@ -414,6 +414,20 @@ body,
   pointer-events: none;
 }
 
+/* A small dot in the middle of the view, to show what you're looking at. */
+.crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffffffe6;
+  box-shadow: 0 0 0 1px #00000099;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .seat-prompt {
   position: fixed;
   bottom: 12%;

@@ -2,27 +2,43 @@ import { useEffect, useRef } from 'react'
 import { isTyping } from '../../utils/isTyping'
 
 // Physical key positions, so WASD works on any keyboard layout.
-const MOVEMENT_CODES = ['KeyW', 'KeyA', 'KeyS', 'KeyD']
+const HELD_CODES = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight']
 
-/** Tracks held movement keys in a ref, so key presses don't re-render React. */
+export interface MovementKeys {
+  pressed: Set<string>
+  /** Set by a fresh press of Space, and cleared once the player has used it. */
+  jumpQueued: boolean
+}
+
+/** Tracks movement keys in a ref, so key presses don't re-render React. */
 export function useMovementKeys() {
-  const pressedRef = useRef(new Set<string>())
+  const keysRef = useRef<MovementKeys>({ pressed: new Set(), jumpQueued: false })
 
   useEffect(() => {
-    const pressed = pressedRef.current
+    const keys = keysRef.current
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event)) {
-        pressed.clear()
+        keys.pressed.clear()
+        keys.jumpQueued = false
         return
       }
-      if (MOVEMENT_CODES.includes(event.code)) pressed.add(event.code)
+      if (HELD_CODES.includes(event.code)) keys.pressed.add(event.code)
+      if (event.code === 'Space' && document.pointerLockElement) {
+        // Otherwise Space would also press whichever button last had focus.
+        event.preventDefault()
+        // Holding Space jumps once, not over and over.
+        if (!event.repeat) keys.jumpQueued = true
+      }
     }
     const handleKeyUp = (event: KeyboardEvent) => {
-      pressed.delete(event.code)
+      keys.pressed.delete(event.code)
     }
     // A key released while the window is unfocused never sends a keyup.
-    const releaseAll = () => pressed.clear()
+    const releaseAll = () => {
+      keys.pressed.clear()
+      keys.jumpQueued = false
+    }
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
@@ -34,5 +50,5 @@ export function useMovementKeys() {
     }
   }, [])
 
-  return pressedRef
+  return keysRef
 }

@@ -13,14 +13,14 @@ export function usePoseSender() {
   const elapsedRef = useRef(0)
   const lastPoseRef = useRef<PlayerPose | null>(null)
 
-  return (camera: Camera, body: RapierRigidBody, delta: number) => {
+  return (camera: Camera, body: RapierRigidBody, delta: number, lift: number) => {
     elapsedRef.current += delta
     if (elapsedRef.current < SEND_INTERVAL_SECONDS) return
     elapsedRef.current = 0
 
     const { x, z } = body.translation()
     lookAngles.setFromQuaternion(camera.quaternion)
-    const pose = { x, z, yaw: lookAngles.y, pitch: lookAngles.x }
+    const pose = { x, z, yaw: lookAngles.y, pitch: lookAngles.x, lift }
 
     const last = lastPoseRef.current
     const changed =
@@ -28,7 +28,8 @@ export function usePoseSender() {
       Math.abs(last.x - pose.x) > CHANGE_THRESHOLD ||
       Math.abs(last.z - pose.z) > CHANGE_THRESHOLD ||
       Math.abs(last.yaw - pose.yaw) > CHANGE_THRESHOLD ||
-      Math.abs(last.pitch - pose.pitch) > CHANGE_THRESHOLD
+      Math.abs(last.pitch - pose.pitch) > CHANGE_THRESHOLD ||
+      Math.abs((last.lift ?? 0) - pose.lift) > CHANGE_THRESHOLD
     if (!changed) return
 
     lastPoseRef.current = pose

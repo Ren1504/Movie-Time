@@ -61,7 +61,7 @@ export function PlayerController({
   const camera = useThree((state) => state.camera)
   const canvas = useThree((state) => state.gl.domElement)
   const { world } = useRapier()
-  const pressedRef = useMovementKeys()
+  const keysRef = useMovementKeys()
   const seatHighlightRef = useRef<Mesh>(null)
   const updateSeating = useSeatInteraction(
     seatHighlightRef,
@@ -74,6 +74,10 @@ export function PlayerController({
   const colliderRef = useRef<RapierCollider>(null)
   const characterRef = useRef<ReturnType<typeof world.createCharacterController>>(null)
   const velocityRef = useRef({ forward: 0, right: 0, vertical: 0 })
+  // Where the feet were when the player last left the ground, and how far above
+  // that they are now. Others see the jump from this.
+  const takeoffYRef = useRef(0)
+  const liftRef = useRef(0)
 
   useEffect(() => {
     const [x, y, z] = spawnPosition
@@ -137,13 +141,16 @@ export function PlayerController({
     if (!controls?.isLocked || !body || !collider || !character) return
 
     const delta = Math.min(frameDelta, playerConfig.maxFrameDelta)
-    sendPose(state.camera, body, delta)
+    sendPose(state.camera, body, delta, liftRef.current)
+    const keys = keysRef.current
     if (!updateSeating(state.camera, body, delta)) {
       velocityRef.current = { forward: 0, right: 0, vertical: 0 }
+      liftRef.current = 0
+      keys.jumpQueued = false
       return
     }
 
-    const pressed = pressedRef.current
+    const { pressed } = keys
     let inputForward = Number(pressed.has('KeyW')) - Number(pressed.has('KeyS'))
     let inputRight = Number(pressed.has('KeyD')) - Number(pressed.has('KeyA'))
     // Without this, moving diagonally would be faster than moving straight.
@@ -155,26 +162,38 @@ export function PlayerController({
 
     const velocity = velocityRef.current
     const { walkSpeed, movementResponse, heightResponse, eyeHeight } = playerConfig
+    const sprinting = pressed.has('ShiftLeft') || pressed.has('ShiftRight')
+    const speed = walkSpeed * (sprinting ? playerConfig.sprintMultiplier : 1)
     velocity.forward = MathUtils.damp(
       velocity.forward,
-      inputForward * walkSpeed,
+      inputForward * speed,
       movementResponse,
       delta,
     )
     velocity.right = MathUtils.damp(
       velocity.right,
-      inputRight * walkSpeed,
+      inputRight * speed,
       movementResponse,
       delta,
     )
-    // No downward push while grounded, as it would drag the player down the
-    // slope. Snap-to-ground keeps the player on the floor instead.
-    velocity.vertical = character.computedGrounded()
-      ? 0
-      : Math.max(
-          velocity.vertical - playerConfig.gravity * delta,
-          -playerConfig.maxFallSpeed,
-        )
+    // Still rising counts as airborne, as the ground can be detected for a
+    // frame or two after take-off.
+    const onGround = character.computedGrounded() && velocity.vertical <= 0
+    const wasAirborne = velocity.vertical !== 0
+    if (onGround && keys.jumpQueued) {
+      velocity.vertical = playerConfig.jumpSpeed
+    } else if (onGround) {
+      // No downward push while grounded, as it would drag the player down the
+      // slope. Snap-to-ground keeps the player on the floor instead.
+      velocity.vertical = 0
+    } else {
+      velocity.vertical = Math.max(
+        velocity.vertical - playerConfig.gravity * delta,
+        -playerConfig.maxFallSpeed,
+      )
+    }
+    // A press in the air is dropped, so it doesn't fire on landing.
+    keys.jumpQueued = false
 
     // Looking up or down must not change walking speed, so only heading counts.
     state.camera.getWorldDirection(forward)
@@ -187,6 +206,11 @@ export function PlayerController({
       z: (forward.z * velocity.forward + right.z * velocity.right) * delta,
     })
     const movement = character.computedMovement()
+    // Hitting a ceiling ends the rise, instead of sticking to it. Just below
+    // zero, so the player still counts as airborne and starts to fall.
+    if (velocity.vertical > 0 && movement.y < velocity.vertical * delta * 0.5) {
+      velocity.vertical = -0.01
+    }
     const current = body.translation()
     const next = {
       x: current.x + movement.x,
@@ -195,16 +219,18 @@ export function PlayerController({
     }
     body.setNextKinematicTranslation(next)
 
+    const feetY = next.y - BODY_CENTER_HEIGHT
+    const airborne = velocity.vertical !== 0
+    if (airborne && !wasAirborne) takeoffYRef.current = current.y - BODY_CENTER_HEIGHT
+    liftRef.current = airborne ? Math.max(0, feetY - takeoffYRef.current) : 0
+
     const position = state.camera.position
     position.x = next.x
     position.z = next.z
-    // Only height is smoothed, so changes in floor height don't jolt the view.
-    position.y = MathUtils.damp(
-      position.y,
-      next.y - BODY_CENTER_HEIGHT + eyeHeight,
-      heightResponse,
-      delta,
-    )
+    // On the ground, height is smoothed so changes in floor height don't jolt
+    // the view. In the air it follows exactly, or jumps would feel sluggish.
+    const eyeY = feetY + eyeHeight
+    position.y = airborne ? eyeY : MathUtils.damp(position.y, eyeY, heightResponse, delta)
   }, BEFORE_PHYSICS_STEP)
 
   return (

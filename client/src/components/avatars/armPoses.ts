@@ -58,5 +58,11 @@ export const leftArm = {
 export const rightArm = {
   resting: reach(1, new Vector3(0.2, HIP_HEIGHT + 0.12, -0.3), OUT_AND_DOWN(1)),
   inBucket: reach(1, new Vector3(0.02, LAP_BUCKET.y + 0.14, LAP_BUCKET.z), OUT_AND_DOWN(1)),
+  // Standing, across the body into the bucket in the left hand.
+  inCarriedBucket: reach(
+    1,
+    new Vector3(CARRIED_BUCKET.x + 0.05, CARRIED_BUCKET.y + 0.14, CARRIED_BUCKET.z),
+    OUT_AND_DOWN(1),
+  ),
   atMouth: reach(1, new Vector3(0.03, 1.55, -0.15), DOWN_AND_OUT(1)),
 }

@@ -25,7 +25,12 @@ export interface PlayerPose {
   z: number
   yaw: number
   pitch: number
+  /** Height above where a jump started. Left out, or 0, on the ground. */
+  lift?: number
 }
+
+/** The highest lift a pose may carry, a little above a real jump. */
+export const MAX_POSE_LIFT = 3
 
 export interface RoomMember {
   id: string
@@ -152,6 +157,8 @@ export interface ClientToServerEvents {
     ack: (result: RoomResult<null>) => void,
   ) => void
   'popcorn:drop': () => void
+  /** One bite, started by the player's click. Only while holding a bucket. */
+  'popcorn:eat': () => void
   'chat:send': (
     payload: { text: string },
     ack: (result: RoomResult<null>) => void,
@@ -172,6 +179,8 @@ export interface ServerToClientEvents {
   'room:member-joined': (name: string) => void
   'chat:message': (message: ChatMessage) => void
   'reaction:shown': (payload: { memberId: string; reaction: Reaction }) => void
+  /** Someone else took a bite, so their avatar should play one. */
+  'popcorn:eaten': (payload: { memberId: string }) => void
   /** Only the members who moved since the last update. */
   'players:poses': (poses: (PlayerPose & { id: string })[]) => void
 }

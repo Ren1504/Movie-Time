@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { MathUtils, MeshStandardMaterial, Quaternion, type Group } from 'three'
 import type { RoomMember } from '@movie/shared'
 import { remotePoses } from '../../systems/multiplayer/remotePoses'
-import { EatingTimer } from '../../systems/popcorn/eating'
+import { Bite, pendingBites } from '../../systems/popcorn/eating'
 import { PopcornBucket } from '../popcorn/PopcornBucket'
 import {
   drawnFloorY,
@@ -71,6 +71,7 @@ function blendPose(from: ArmPose, to: ArmPose, amount: number, into: ArmPose) {
 const leftPose: ArmPose = { upper: new Quaternion(), fore: new Quaternion() }
 const rightPose: ArmPose = { upper: new Quaternion(), fore: new Quaternion() }
 const scratchPose: ArmPose = { upper: blendUpper, fore: blendFore }
+const bucketReach: ArmPose = { upper: new Quaternion(), fore: new Quaternion() }
 
 /** The shortest way round from one angle to another, between -PI and PI. */
 function angleBetween(from: number, to: number) {
@@ -104,8 +105,8 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
   const foreArmRefs = useRef<(Group | null)[]>([])
   const bucketRef = useRef<Group>(null)
   const motionRef = useRef({ seatedAmount: 0, speed: 0, stride: 0, holdingAmount: 0 })
-  const eatingRef = useRef<EatingTimer>(null)
-  eatingRef.current ??= new EatingTimer()
+  const biteRef = useRef<Bite>(null)
+  biteRef.current ??= new Bite()
   const shirtMaterial = useMemo(
     () => new MeshStandardMaterial({ color: shirtColorFor(member.id), roughness: 0.8 }),
     [member.id],
@@ -148,7 +149,8 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
     )
     const seat = member.seatId ? seatsById.get(member.seatId) : undefined
     const floorY = seat ? seat.position[1] : drawnFloorY(position.z)
-    const targetY = floorY - motion.seatedAmount * SEATED_DROP
+    const lift = seat ? 0 : (pose.lift ?? 0)
+    const targetY = floorY + lift - motion.seatedAmount * SEATED_DROP
     position.y = MathUtils.damp(position.y, targetY, HEIGHT_RESPONSE, frameDelta)
 
     root.rotation.y += MathUtils.damp(
@@ -172,8 +174,10 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
       HOLD_RESPONSE,
       frameDelta,
     )
-    const eating = eatingRef.current!
-    eating.update(frameDelta, holding && seated)
+    const eating = biteRef.current!
+    // Taken out even when not holding, so a stale bite can't play later.
+    if (pendingBites.delete(member.id) && holding) eating.start()
+    eating.update(frameDelta)
     const bite = eating.pose()
     head.rotation.x -= bite.lift * BITE_NOD
 
@@ -182,7 +186,9 @@ export function Avatar({ member, spawnSlot }: AvatarProps) {
     blendPose(hanging, scratchPose, motion.holdingAmount, leftPose)
     // The right hand rests until a bite, then dips in and comes up to the mouth.
     blendPose(hanging, rightArm.resting, motion.seatedAmount * motion.holdingAmount, rightPose)
-    blendPose(rightPose, rightArm.inBucket, bite.reach, scratchPose)
+    // Into the bucket wherever it is: in the left hand, or on the lap.
+    blendPose(rightArm.inCarriedBucket, rightArm.inBucket, motion.seatedAmount, bucketReach)
+    blendPose(rightPose, bucketReach, bite.reach, scratchPose)
     blendPose(scratchPose, rightArm.atMouth, bite.lift, rightPose)
     for (const [index, arm] of [leftPose, rightPose].entries()) {
       upperArmRefs.current[index]?.quaternion.copy(arm.upper)

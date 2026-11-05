@@ -99,6 +99,7 @@ export function TheatreView({
         onSeatPromptChange={setSeatPrompt}
         onPopcornPromptChange={setPopcornPrompt}
       />
+      {gameState === 'playing' && <div className="crosshair" aria-hidden="true" />}
       {gameState === 'playing' && promptAction && (
         <SeatPromptLabel action={promptAction} />
       )}

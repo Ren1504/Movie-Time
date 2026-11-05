@@ -4,6 +4,11 @@ export const playerConfig = {
   bodyHeight: 1.8,
   bodyRadius: 0.25,
   walkSpeed: 4,
+  // Walking speed is multiplied by this while Shift is held.
+  sprintMultiplier: 1.75,
+  // Upward speed at take-off. 4 m/s gives a jump of about 0.8 m, enough for
+  // the stage but not over the popcorn counter.
+  jumpSpeed: 4,
   mouseSensitivity: 1,
   // Higher values reach full speed, and stop, more quickly.
   movementResponse: 12,

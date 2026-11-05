@@ -1,21 +1,22 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CapsuleGeometry, IcosahedronGeometry, MathUtils, MeshStandardMaterial, Vector3, type Group } from 'three'
 import type { PopcornFlavor } from '@movie/shared'
-import { playCrunch } from '../../systems/popcorn/crunchSound'
-import { EatingTimer } from '../../systems/popcorn/eating'
+import { socket } from '../../network/socket'
+import { Bite } from '../../systems/popcorn/eating'
 import { localSeat } from '../../systems/seats/seatOccupancy'
 import { SKIN_COLOR } from '../avatars/avatarModel'
 import { PopcornBucket } from './PopcornBucket'
 import { BUCKET_HEIGHT, popcornMaterials } from './popcornModel'
 
 // Positions are relative to the camera: +X right, +Y up, -Z ahead.
-const CARRIED = new Vector3(0.3, -0.36, -0.66)
-const ON_LAP = new Vector3(0.24, -0.46, -0.64)
-const SCALE = 0.85
+// The bucket is in the left hand, as others see it on the avatar.
+const CARRIED = new Vector3(-0.3, -0.36, -0.66)
+const ON_LAP = new Vector3(-0.24, -0.46, -0.64)
+const SCALE = 1
 const SIT_RESPONSE = 6
-// The hand comes in from the lower right, dips into the bucket, then rises to
-// the bottom of the view, where the mouth would be.
+// The right hand comes in from the lower right, reaches across into the
+// bucket, then rises to the bottom of the view, where the mouth would be.
 const HAND_AWAY = new Vector3(0.45, -0.55, -0.45)
 const HAND_MOUTH = new Vector3(0.04, -0.13, -0.3)
 const IN_BUCKET_DEPTH = 0.03
@@ -38,8 +39,19 @@ export function PopcornViewModel({ flavor }: PopcornViewModelProps) {
   const bucketRef = useRef<Group>(null)
   const handRef = useRef<Group>(null)
   const motionRef = useRef({ seated: 0 })
-  const eatingRef = useRef<EatingTimer>(null)
-  eatingRef.current ??= new EatingTimer()
+  const biteRef = useRef<Bite>(null)
+  biteRef.current ??= new Bite()
+
+  // A left click while playing takes a bite. Clicks with the mouse free are
+  // for the menus, so they're ignored.
+  useEffect(() => {
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button !== 0 || !document.pointerLockElement) return
+      if (biteRef.current!.start()) socket.emit('popcorn:eat')
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [])
 
   useFrame(({ camera }, delta) => {
     const root = rootRef.current
@@ -54,9 +66,9 @@ export function PopcornViewModel({ flavor }: PopcornViewModelProps) {
     motion.seated = MathUtils.damp(motion.seated, Number(seated), SIT_RESPONSE, delta)
     bucket.position.lerpVectors(CARRIED, ON_LAP, motion.seated)
 
-    const eating = eatingRef.current!
-    if (eating.update(delta, seated)) playCrunch()
-    const { reach, lift } = eating.pose()
+    const bite = biteRef.current!
+    bite.update(delta)
+    const { reach, lift } = bite.pose()
     hand.visible = reach > 0 || lift > 0
     if (!hand.visible) return
 
@@ -68,7 +80,7 @@ export function PopcornViewModel({ flavor }: PopcornViewModelProps) {
 
   return (
     <group ref={rootRef}>
-      <group ref={bucketRef} rotation={[0.35, -0.3, 0]} scale={SCALE}>
+      <group ref={bucketRef} rotation={[0.35, 0.3, 0]} scale={SCALE}>
         <PopcornBucket flavor={flavor} />
       </group>
       <group ref={handRef} name="popcorn-hand" visible={false} rotation={[0.9, 0, 0.7]}>

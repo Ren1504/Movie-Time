@@ -32,6 +32,8 @@ export const serverConfig = {
     soundReactionsPer5Seconds: 3,
     // Each change is sent to the whole room, so swapping buckets can't flood it.
     popcornChangesPer10Seconds: 6,
+    // A bite takes over a second and a half, so this is more than anyone can click.
+    popcornBitesPer5Seconds: 4,
   },
   liveKit: {
     // How this server reaches LiveKit, which runs beside it.

@@ -1,18 +1,17 @@
 import { MathUtils } from 'three'
+import { socket } from '../../network/socket'
 
-// Timing for eating popcorn while seated. Each screen times its own bites, as
-// nobody can tell whether someone else's are exactly in step.
+// One bite of popcorn: the hand dips into the bucket, comes up to the mouth,
+// then goes back down. A player starts one with a left click, and the others in
+// the room are told, so their screens play it on that player's avatar.
 
-const BITE_SECONDS = 2.4
-const FIRST_GAP = [3, 8] as const
-const GAP = [8, 20] as const
+const BITE_SECONDS = 1.6
 
 // Parts of one bite, as fractions of its length.
 const REACH_END = 0.22
 const LIFT_END = 0.5
 const CHEW_END = 0.72
 
-const between = ([low, high]: readonly [number, number]) => low + Math.random() * (high - low)
 const ease = (value: number, from: number, to: number) =>
   MathUtils.smoothstep(value, from, to)
 
@@ -25,30 +24,24 @@ export interface BitePose {
 
 const RESTING: BitePose = { reach: 0, lift: 0 }
 
-export class EatingTimer {
-  private wait = between(FIRST_GAP)
+export class Bite {
   private progress = -1
 
-  /** Advances the timer. Returns true at the moment the popcorn reaches the mouth. */
-  update(delta: number, eating: boolean): boolean {
-    if (!eating) {
-      // A bite in progress finishes, so the hand never snaps back.
-      if (this.progress < 0) this.wait = between(FIRST_GAP)
-    }
-    if (this.progress >= 0) {
-      const before = this.progress
-      this.progress += delta / BITE_SECONDS
-      const atMouth = before < LIFT_END && this.progress >= LIFT_END
-      if (this.progress >= 1) {
-        this.progress = -1
-        this.wait = between(GAP)
-      }
-      return atMouth
-    }
-    if (!eating) return false
-    this.wait -= delta
-    if (this.wait <= 0) this.progress = 0
-    return false
+  get active() {
+    return this.progress >= 0
+  }
+
+  /** Starts a bite, unless one is already under way. Returns whether it started. */
+  start(): boolean {
+    if (this.active) return false
+    this.progress = 0
+    return true
+  }
+
+  update(delta: number) {
+    if (!this.active) return
+    this.progress += delta / BITE_SECONDS
+    if (this.progress >= 1) this.progress = -1
   }
 
   pose(): BitePose {
@@ -63,3 +56,10 @@ export class EatingTimer {
     return { reach: 0, lift: 1 - ease(t, CHEW_END, 1) }
   }
 }
+
+/** Other players who took a bite. Each avatar takes its own entry out. */
+export const pendingBites = new Set<string>()
+
+socket.on('popcorn:eaten', ({ memberId }) => {
+  pendingBites.add(memberId)
+})
