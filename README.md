@@ -1,8 +1,37 @@
 # Movie With Friends
 
-A multiplayer 3D cinema. Walk around a theatre, pick a seat, and watch the host's shared screen together on the big screen.
+A multiplayer 3D cinema. Walk around a theatre, pick a seat, grab some popcorn, and watch the host's shared screen together on the big screen.
+
+**Try it: [movie-time-392m.onrender.com](https://movie-time-392m.onrender.com/)**
+
+<!-- Screenshot goes here, for example: ![The theatre](docs/screenshot.png) -->
 
 Built with React, Three.js (React Three Fiber), Rapier, Node, Socket.IO and LiveKit.
+
+## How to use it
+
+1. Open the link on a computer. Phones and tablets aren't supported.
+2. Enter your name and select **Create Room**, then send the room code or invite link to your friends.
+3. Friends enter the code and select **Join Room**.
+4. The host presses Esc and selects **Share Screen** to put a tab or window on the cinema screen. Screen sharing works best in Chrome or Edge.
+
+Press F11 for full screen, for a much better experience. The first visit can take a moment, as the free server wakes up.
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| W A S D | Walk |
+| Shift | Sprint |
+| Space | Jump |
+| Mouse | Look around |
+| E | Sit, stand or get popcorn |
+| Left click | Eat popcorn |
+| G | Put popcorn down |
+| T | Chat |
+| 1 to 6 | React |
+| 7 / 8 | Whistle / Clap |
+| Esc | Pause, and host controls |
 
 ## Run it
 
@@ -21,7 +50,19 @@ Requires Node 24.
 
 `npm run host` prints the addresses and ports to forward: TCP 3001, 7880 and 7881, and UDP 7882. Friends' pages have no HTTPS, so only the person using `localhost` can share a screen.
 
-## Deploying to a server
+## Deploying to Render
+
+The live app runs on Render as a Docker web service, with [LiveKit Cloud](https://livekit.io/cloud) for the video. Set these environment variables on Render:
+
+| Variable | Value |
+| --- | --- |
+| `NODE_ENV` | `production` |
+| `TRUST_PROXY` | `true` |
+| `PUBLIC_ORIGIN` | The app's address, used for invite links |
+| `LIVEKIT_URL` and `LIVEKIT_PUBLIC_URL` | Your LiveKit Cloud project's `wss://` address |
+| `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` | From your LiveKit Cloud project. Keep these secret |
+
+## Deploying to your own server
 
 Requires Docker and a domain name, and the server needs a public IP address.
 
