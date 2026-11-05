@@ -1,15 +1,36 @@
 import { Color, type Light, type Material } from 'three'
-import type { AmbienceId } from '@movie/shared'
 import {
-  ambiencePresets,
-  type AmbienceColorKey,
+  lightingPresets,
   type AmbienceLightKey,
+  type LightingMode,
 } from '../../config/ambienceConfig'
+import { theatreConfig } from '../../config/theatreConfig'
 
 // Materials and lights share these Color objects, so blending one value changes
 // everything using it. Nothing has to re-render or rebuild during a transition.
 
-const start = ambiencePresets.classic
+const { colors } = theatreConfig
+const start = lightingPresets.lit
+
+const materialColors = {
+  wall: colors.wall,
+  wallPanel: colors.wallPanel,
+  wood: colors.wood,
+  screenWall: colors.screenWall,
+  screenBorder: colors.screenBorder,
+  ceiling: colors.ceiling,
+  carpet: colors.carpet,
+  aisleCarpet: colors.aisleCarpet,
+  velvet: colors.velvet,
+  seatFrame: colors.seatFrame,
+  stage: colors.stage,
+  curtain: colors.curtain,
+  doorLeaf: colors.doorLeaf,
+  // The only one that changes: fixtures glow less when the lights are down.
+  fixture: start.fixture,
+}
+
+export type AmbienceColorKey = keyof typeof materialColors
 
 function createColors<K extends string>(source: Record<K, string>) {
   return Object.fromEntries(
@@ -22,23 +43,24 @@ const lightColorSource = Object.fromEntries(
 ) as Record<AmbienceLightKey, string>
 
 export const ambience = {
-  targetId: 'classic' as AmbienceId,
-  /** Set when the look should change at once, such as on arrival in a room. */
+  targetMode: 'lit' as LightingMode,
+  /** Set when the lights should change at once, such as on arrival in a room. */
   snap: false,
-  colors: createColors(start.colors),
+  colors: createColors(materialColors),
   lightColors: createColors(lightColorSource),
-  lightGroups: {
-    ambient: new Set<Light>(),
-    ceilingSpot: new Set<Light>(),
-    screenWash: new Set<Light>(),
-    sconce: new Set<Light>(),
-    doorWash: new Set<Light>(),
-  } as Record<AmbienceLightKey, Set<Light>>,
+  lightGroups: Object.fromEntries(
+    Object.keys(start.lights).map((key) => [key, new Set<Light>()]),
+  ) as Record<AmbienceLightKey, Set<Light>>,
 }
 
-export function setAmbienceTarget(id: AmbienceId, snap = false) {
-  ambience.targetId = id
-  if (snap) ambience.snap = true
+/** Fades the house lights towards a mode over a few seconds. */
+export function setLightingTarget(mode: LightingMode) {
+  ambience.targetMode = mode
+}
+
+/** Jumps straight to the current mode, without fading. */
+export function snapLighting() {
+  ambience.snap = true
 }
 
 const materialRefs = new Map<AmbienceColorKey, (material: Material | null) => void>()

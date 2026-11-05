@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from '@movie/shared'
+import { FullscreenTip } from './FullscreenTip'
 
 interface RoomLobbyProps {
   connected: boolean
@@ -63,6 +64,7 @@ export function RoomLobby({ connected, busy, notice, onCreate, onJoin }: RoomLob
         </form>
         {!connected && <p role="status">Connecting to the server...</p>}
         {notice && <p role="alert">{notice}</p>}
+        <FullscreenTip />
       </div>
     </div>
   )

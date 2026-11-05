@@ -66,6 +66,24 @@ export const theatreConfig = {
     stripeColors: ['#c8102e', '#f5efe6'],
     flavorColors: { caramel: '#b8741f', salted: '#f4ecd6', cheese: '#ffc21a' },
   },
+  // In a booth behind the back wall, shining through a small window above the
+  // last row, like a real cinema. It lights up while the host is live.
+  projector: {
+    // The centre of the window and the lens.
+    height: 8.2,
+    portWidth: 1.4,
+    portHeight: 0.9,
+    // The room behind the wall.
+    boothWidth: 4,
+    boothDepth: 3,
+    boothHeight: 3,
+    // From the back of the wall to the lens.
+    lensDepth: 0.9,
+    beamColor: '#fff0d4',
+    // Light added per metre of beam looked through. Higher is a brighter beam.
+    beamStrength: 0.07,
+    lensColor: '#fff6e4',
+  },
   colors: {
     carpet: '#4a1820',
     aisleCarpet: '#26151a',

@@ -1,4 +1,5 @@
 import { PopcornLobby } from './PopcornLobby'
+import { Projector } from './Projector'
 import { TheatreCeiling } from './TheatreCeiling'
 import { TheatreFloor } from './TheatreFloor'
 import { TheatreLighting } from './TheatreLighting'
@@ -16,6 +17,7 @@ export function Theatre() {
       <TheatreScreen />
       <TheatreSeats />
       <PopcornLobby />
+      <Projector />
     </>
   )
 }

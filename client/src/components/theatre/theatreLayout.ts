@@ -12,6 +12,15 @@ export const halfWidth = room.width / 2
 export const frontZ = room.screenWallZ
 export const backZ = room.screenWallZ + room.length
 
+// The projection window in the back wall, centred above the middle aisle.
+const { projector } = theatreConfig
+export const projectionPort = {
+  left: -projector.portWidth / 2,
+  right: projector.portWidth / 2,
+  bottom: projector.height - projector.portHeight / 2,
+  top: projector.height + projector.portHeight / 2,
+}
+
 const blockWidth = seating.seatsPerBlock * seating.seatPitch
 const sideAisleWidth = (room.width - seating.centerAisleWidth - 2 * blockWidth) / 2
 const blockCenterX = seating.centerAisleWidth / 2 + blockWidth / 2

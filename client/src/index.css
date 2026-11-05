@@ -77,6 +77,19 @@ body,
   font-size: 13px;
 }
 
+.theatre-overlay .fullscreen-tip {
+  color: #f2e6d8b3;
+}
+
+.fullscreen-tip kbd {
+  padding: 1px 6px;
+  border: 1px solid #ffffff40;
+  border-radius: 4px;
+  background: #ffffff14;
+  color: #f2e6d8;
+  font: 600 12px system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
 .theatre-overlay button:disabled {
   opacity: 0.5;
   cursor: default;
@@ -213,35 +226,6 @@ body,
 
 .room-panel button:hover {
   background: #ffffff33;
-}
-
-.ambience-picker {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid #ffffff1a;
-}
-
-.ambience-picker-title {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.ambience-picker-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.stream-panel .ambience-picker-options button {
-  margin: 0;
-  padding: 7px;
-  font-size: 12px;
-}
-
-.stream-panel .ambience-picker-options button.selected {
-  outline: 1px solid #ffb56b;
-  color: #ffb56b;
 }
 
 .chat-box {

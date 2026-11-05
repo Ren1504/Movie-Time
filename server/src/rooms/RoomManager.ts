@@ -1,13 +1,11 @@
 import { randomInt, randomUUID } from 'node:crypto'
 import {
-  AMBIENCE_IDS,
   MAX_NAME_LENGTH,
   POPCORN_BOOTH,
   POPCORN_FLAVORS,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
   isValidSeatId,
-  type AmbienceId,
   type MemberDeparture,
   type PlayerPose,
   type PopcornFlavor,
@@ -36,7 +34,6 @@ interface Room {
   ownerId: string
   members: Map<string, Member>
   streaming: boolean
-  ambience: AmbienceId
 }
 
 export interface MemberEntry {
@@ -64,7 +61,6 @@ export class RoomManager {
       ownerId: member.id,
       members: new Map([[member.id, member]]),
       streaming: false,
-      ambience: 'classic',
     })
     return { ok: true, value: { code, member } }
   }
@@ -112,16 +108,6 @@ export class RoomManager {
     if (!room?.members.has(memberId)) return { ok: false, error: 'NOT_IN_ROOM' }
     if (room.ownerId !== memberId) return { ok: false, error: 'NOT_OWNER' }
     room.streaming = streaming
-    return { ok: true, value: null }
-  }
-
-  setAmbience(code: string, memberId: string, rawAmbience: unknown): RoomResult<null> {
-    const room = this.rooms.get(code)
-    if (!room?.members.has(memberId)) return { ok: false, error: 'NOT_IN_ROOM' }
-    if (room.ownerId !== memberId) return { ok: false, error: 'NOT_OWNER' }
-    const ambience = AMBIENCE_IDS.find((id) => id === rawAmbience)
-    if (!ambience) return { ok: false, error: 'INVALID_AMBIENCE' }
-    room.ambience = ambience
     return { ok: true, value: null }
   }
 
@@ -231,7 +217,6 @@ export class RoomManager {
       code,
       ownerId: room.ownerId,
       streaming: room.streaming,
-      ambience: room.ambience,
       // Built field by field, so tokens can never reach other members.
       members: [...room.members.values()].map(
         ({ id, name, socketId, seatId, pose, popcorn }) => ({

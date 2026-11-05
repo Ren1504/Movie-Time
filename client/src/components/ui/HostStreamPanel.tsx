@@ -1,5 +1,3 @@
-import type { AmbienceId } from '@movie/shared'
-import { AmbiencePicker } from './AmbiencePicker'
 import { startSharing, stopSharing } from '../../systems/stream/streamConnection'
 import { useStreamState, type StreamConnection } from '../../systems/stream/streamStore'
 
@@ -19,10 +17,9 @@ const SURFACE_TEXT: Record<string, string> = {
 interface HostStreamPanelProps {
   /** The mouse is captured during play, so buttons only appear when paused. */
   interactive: boolean
-  ambience: AmbienceId
 }
 
-export function HostStreamPanel({ interactive, ambience }: HostStreamPanelProps) {
+export function HostStreamPanel({ interactive }: HostStreamPanelProps) {
   const { connection, sharing, audioShared, info, error } = useStreamState()
 
   return (
@@ -78,7 +75,6 @@ export function HostStreamPanel({ interactive, ambience }: HostStreamPanelProps)
       ) : (
         <p className="stream-panel-hint">Press Esc for host controls</p>
       )}
-      {interactive && <AmbiencePicker current={ambience} />}
     </aside>
   )
 }

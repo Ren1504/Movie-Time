@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
-  AmbienceId,
   MemberDeparture,
   RoomEndReason,
   RoomErrorCode,
@@ -8,7 +7,7 @@ import type {
   RoomSession,
   RoomSnapshot,
 } from '@movie/shared'
-import { setAmbienceTarget } from '../systems/ambience/ambienceState'
+import { setLightingTarget, snapLighting } from '../systems/ambience/ambienceState'
 import { syncRemotePoses } from '../systems/multiplayer/remotePoses'
 import { localSeat, syncOccupiedSeats } from '../systems/seats/seatOccupancy'
 import { getStreamState, updateStreamState } from '../systems/stream/streamStore'
@@ -29,7 +28,6 @@ const ERROR_MESSAGES: Record<RoomErrorCode, string> = {
   NOT_IN_ROOM: "You're no longer in that room.",
   NOT_OWNER: 'Only the room owner can do that.',
   SESSION_EXPIRED: 'Your room is no longer available.',
-  INVALID_AMBIENCE: "That ambience doesn't exist.",
   INVALID_SEAT: "That seat doesn't exist.",
   SEAT_TAKEN: 'That seat is taken.',
   STREAM_UNAVAILABLE: 'Streaming is unavailable right now.',
@@ -43,16 +41,17 @@ function syncGameState(room: RoomSnapshot) {
   syncOccupiedSeats(room)
   syncRemotePoses(room)
   updateStreamState({ roomStreaming: room.streaming })
-}
-
-export function setRoomAmbience(ambience: AmbienceId) {
-  socket.timeout(REQUEST_TIMEOUT_MS).emit('room:set-ambience', { ambience }, () => {})
+  // The house lights go down while the host is live, like a cinema before the film.
+  setLightingTarget(room.streaming ? 'dimmed' : 'lit')
 }
 
 const END_MESSAGES: Record<RoomEndReason, string> = {
-  closed: 'The host closed the room.',
+  closed: 'The host closed the room for everybody.',
   replaced: 'You opened this room in another tab.',
 }
+
+// The server tells everyone the room ended, including the host who closed it.
+const CLOSED_BY_YOU = 'You closed the room for everybody.'
 
 interface CurrentRoom {
   memberId: string
@@ -69,12 +68,15 @@ export function useRoom() {
   const [announcement, setAnnouncement] = useState<string | null>(null)
   const memberIdRef = useRef<string | null>(null)
   const streamingRef = useRef(false)
+  const closingRef = useRef(false)
 
   const enter = useCallback((session: RoomSession) => {
     sessionStorage.setItem(TOKEN_KEY, session.token)
     memberIdRef.current = session.memberId
+    closingRef.current = false
     syncGameState(session.room)
-    setAmbienceTarget(session.room.ambience, true)
+    // No fade on arrival: the room should already look right.
+    snapLighting()
     streamingRef.current = session.room.streaming
     setCurrent({
       memberId: session.memberId,
@@ -110,14 +112,14 @@ export function useRoom() {
     }
     const handleUpdated = (room: RoomSnapshot) => {
       syncGameState(room)
-      setAmbienceTarget(room.ambience)
       if (room.streaming !== streamingRef.current) {
         streamingRef.current = room.streaming
         setAnnouncement(room.streaming ? 'The host is now live.' : 'The host stopped sharing.')
       }
       setCurrent((previous) => previous && { ...previous, room })
     }
-    const handleEnded = (reason: RoomEndReason) => exit(END_MESSAGES[reason])
+    const handleEnded = (reason: RoomEndReason) =>
+      exit(reason === 'closed' && closingRef.current ? CLOSED_BY_YOU : END_MESSAGES[reason])
     const handleMemberLeft = ({ name, newOwner }: MemberDeparture) => {
       let message = `${name} left the room.`
       if (newOwner) {
@@ -181,11 +183,12 @@ export function useRoom() {
   }
 
   const exitWithRequest = (event: 'room:leave' | 'room:close') => {
+    closingRef.current = event === 'room:close'
     socket.timeout(REQUEST_TIMEOUT_MS).emit(event, (error: Error | null) => {
       // Without a reply the server may still count us as present. Reconnecting
       // starts its removal timer, as the token needed to return is now gone.
       if (error) socket.disconnect().connect()
-      exit(null)
+      exit(closingRef.current ? CLOSED_BY_YOU : null)
     })
   }
 

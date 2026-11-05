@@ -7,13 +7,11 @@ import {
   CanvasTexture,
   Color,
   MathUtils,
-  type FogExp2,
   type PointsMaterial,
 } from 'three'
 import {
-  ambiencePresets,
-  ambienceTransition,
-  type AmbienceColorKey,
+  lightingPresets,
+  lightingTransition,
   type AmbienceLightKey,
 } from '../../config/ambienceConfig'
 import { theatreConfig } from '../../config/theatreConfig'
@@ -21,8 +19,8 @@ import { backZ, frontZ, halfWidth } from '../../components/theatre/theatreLayout
 import { ambience } from './ambienceState'
 
 const { room } = theatreConfig
-const { response, particleCount } = ambienceTransition
-const FLICKER_SPEED = 9
+const { response, particleCount, particleRiseSpeed, particleDrift, particleSize } =
+  lightingTransition
 
 const target = new Color()
 
@@ -51,87 +49,60 @@ for (let i = 0; i < particleCount; i++) {
 const geometry = new BufferGeometry()
 geometry.setAttribute('position', new BufferAttribute(particlePositions, 3))
 
-/** Blends the room towards the chosen preset, and owns the fog and particles. */
+/** Fades the house lights between lit and dimmed, and drifts the dust in the air. */
 export function AmbienceController() {
   const particleMaterialRef = useRef<PointsMaterial>(null)
-  const particleRiseRef = useRef(ambiencePresets.classic.particles.riseSpeed)
-  const particleDriftRef = useRef(ambiencePresets.classic.particles.drift)
 
   useFrame((state, frameDelta) => {
-    const preset = ambiencePresets[ambience.targetId]
+    const preset = lightingPresets[ambience.targetMode]
     const snap = ambience.snap
     ambience.snap = false
-    const blend = snap ? 1 : 1 - Math.exp(-response * Math.min(frameDelta, 0.1))
+    const delta = Math.min(frameDelta, 0.1)
+    const blend = snap ? 1 : 1 - Math.exp(-response * delta)
     const towards = (current: number, goal: number) => current + (goal - current) * blend
 
-    for (const key of Object.keys(preset.colors) as AmbienceColorKey[]) {
-      ambience.colors[key].lerp(target.set(preset.colors[key]), blend)
-    }
+    ambience.colors.fixture.lerp(target.set(preset.fixture), blend)
 
-    const time = state.clock.elapsedTime
     for (const key of Object.keys(preset.lights) as AmbienceLightKey[]) {
       const goal = preset.lights[key]
       ambience.lightColors[key].lerp(target.set(goal.color), blend)
-      let index = 0
       for (const light of ambience.lightGroups[key]) {
-        let intensity = goal.intensity
-        if (key === 'sconce' && preset.sconceFlicker > 0) {
-          // Layered waves, offset per light, so each one flickers on its own.
-          const wave = Math.sin(time * FLICKER_SPEED + index * 2.4) * Math.sin(time * 2.3 + index)
-          intensity *= 1 - preset.sconceFlicker * Math.max(0, wave)
-        }
-        light.intensity = towards(light.intensity, intensity)
-        index++
+        light.intensity = towards(light.intensity, goal.intensity)
       }
     }
 
     state.gl.toneMappingExposure = towards(state.gl.toneMappingExposure, preset.exposure)
 
-    const fog = state.scene.fog as FogExp2 | null
-    if (fog) {
-      fog.color.lerp(target.set(preset.fog.color), blend)
-      fog.density = towards(fog.density, preset.fog.density)
-    }
-
     const material = particleMaterialRef.current
     if (material) {
-      const { particles } = preset
-      material.color.lerp(target.set(particles.color), blend)
-      material.opacity = towards(material.opacity, particles.opacity)
-      material.size = towards(material.size, particles.size)
-      particleRiseRef.current = towards(particleRiseRef.current, particles.riseSpeed)
-      particleDriftRef.current = towards(particleDriftRef.current, particles.drift)
+      material.color.lerp(target.set(preset.particles.color), blend)
+      material.opacity = towards(material.opacity, preset.particles.opacity)
 
-      const delta = Math.min(frameDelta, 0.1)
+      const time = state.clock.elapsedTime
       const attribute = geometry.getAttribute('position') as BufferAttribute
       for (let i = 0; i < particleCount; i++) {
-        const y = particlePositions[i * 3 + 1] + particleRiseRef.current * delta
-        particlePositions[i * 3 + 1] = y > room.height ? 0 : y < 0 ? room.height : y
-        particlePositions[i * 3] +=
-          Math.sin(time * 0.3 + particlePhases[i]) * particleDriftRef.current * delta
+        const y = particlePositions[i * 3 + 1] + particleRiseSpeed * delta
+        particlePositions[i * 3 + 1] = y > room.height ? 0 : y
+        particlePositions[i * 3] += Math.sin(time * 0.3 + particlePhases[i]) * particleDrift * delta
       }
       attribute.needsUpdate = true
     }
   })
 
   return (
-    <>
-      {/* Always present, as adding fog later would rebuild every material. */}
-      <fogExp2 attach="fog" args={[ambiencePresets.classic.fog.color, 0]} />
-      <points geometry={geometry} frustumCulled={false}>
-        <pointsMaterial
-          ref={particleMaterialRef}
-          map={dotTexture}
-          transparent
-          opacity={ambiencePresets.classic.particles.opacity}
-          size={ambiencePresets.classic.particles.size}
-          color={ambiencePresets.classic.particles.color}
-          blending={AdditiveBlending}
-          depthWrite={false}
-          fog={false}
-          toneMapped={false}
-        />
-      </points>
-    </>
+    <points geometry={geometry} frustumCulled={false}>
+      <pointsMaterial
+        ref={particleMaterialRef}
+        map={dotTexture}
+        transparent
+        opacity={lightingPresets.lit.particles.opacity}
+        size={particleSize}
+        color={lightingPresets.lit.particles.color}
+        blending={AdditiveBlending}
+        depthWrite={false}
+        fog={false}
+        toneMapped={false}
+      />
+    </points>
   )
 }

@@ -20,7 +20,7 @@ import {
   lobbyMinX,
 } from './theatreLayout'
 
-const { room, lobby, booth, colors } = theatreConfig
+const { room, lobby, booth } = theatreConfig
 const shell = room.wallThickness
 const FLOOR_THICKNESS = 0.2
 const LIGHT_PANEL_SIZE = 0.8
@@ -118,9 +118,6 @@ const machinePopcorn = createBoxBatch([
   },
 ])
 
-const boothSign = createSignTexture('POPCORN', colors.brass)
-const SIGN_WIDTH = 1.8
-const SIGN_HEIGHT = SIGN_WIDTH * (96 / 256)
 const flavorSigns = boothDisplay.map(({ flavor }) =>
   createSignTexture(FLAVOR_NAMES[flavor].toUpperCase(), '#2b1518'),
 )
@@ -153,7 +150,7 @@ export function PopcornLobby() {
         <meshBasicMaterial ref={ambienceMaterial('fixture')} toneMapped={false} />
       </mesh>
       <pointLight
-        ref={ambienceLight('doorWash')}
+        ref={ambienceLight('lobby')}
         intensity={LIGHT_INTENSITY}
         position={[lobbyCenterX, lobby.height - 0.5, lobbyCenterZ]}
       />
@@ -193,14 +190,6 @@ export function PopcornLobby() {
           roughness={0.1}
           depthWrite={false}
         />
-      </mesh>
-
-      <mesh
-        position={[lobbyMaxX - 0.01, lobby.height - 0.75, POPCORN_BOOTH.z]}
-        rotation={[0, -Math.PI / 2, 0]}
-      >
-        <planeGeometry args={[SIGN_WIDTH, SIGN_HEIGHT]} />
-        <meshBasicMaterial map={boothSign} toneMapped={false} />
       </mesh>
 
       {boothDisplay.map(({ flavor, position }, index) => (

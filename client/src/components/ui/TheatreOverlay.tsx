@@ -1,3 +1,5 @@
+import { FullscreenTip } from './FullscreenTip'
+
 interface TheatreOverlayProps {
   title: string
   actionLabel: string
@@ -41,6 +43,7 @@ export function TheatreOverlay({
           {actionLabel}
         </button>
         {notice && <p role="alert">{notice}</p>}
+        <FullscreenTip />
       </div>
     </div>
   )

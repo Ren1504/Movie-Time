@@ -7,6 +7,7 @@ import {
   doorCenters,
   frontZ,
   halfWidth,
+  projectionPort,
   rearFloorY,
   rightWallAroundDoorway,
 } from './theatreLayout'
@@ -37,11 +38,21 @@ const wallBoxes: Box[] = [
     backZ + shell,
     room.height,
   ),
-  {
-    center: [0, room.height / 2, backZ + shell / 2],
-    size: [room.width, room.height, shell],
-  },
+  ...backWallAroundPort(),
 ]
+
+/** The back wall in four pieces around the projection window. */
+function backWallAroundPort(): Box[] {
+  const { left, right, bottom, top } = projectionPort
+  const z = backZ + shell / 2
+  const sideWidth = halfWidth + left
+  return [
+    { center: [-halfWidth + sideWidth / 2, room.height / 2, z], size: [sideWidth, room.height, shell] },
+    { center: [halfWidth - sideWidth / 2, room.height / 2, z], size: [sideWidth, room.height, shell] },
+    { center: [0, bottom / 2, z], size: [right - left, bottom, shell] },
+    { center: [0, (top + room.height) / 2, z], size: [right - left, room.height - top, shell] },
+  ]
+}
 
 const screenWallBox: Box = {
   center: [0, room.height / 2, frontZ - shell / 2],
@@ -61,17 +72,33 @@ const sidePanelBoxes: Box[] = [-1, 1].flatMap((side) =>
     size: [WALL_PANEL_DEPTH, panelHeight, PANEL_WIDTH],
   })),
 )
+// Panels beside the projection window stop short of it, above and below.
+const PORT_MARGIN = 0.35
 const backPanelBoxes: Box[] = Array.from(
   { length: Math.floor(room.width / PANEL_SPACING) },
-  (_, i): Box => ({
-    center: [
-      -room.width / 2 + PANEL_SPACING * (i + 0.5) + (room.width % PANEL_SPACING) / 2,
-      panelCenterY,
-      backZ - WALL_PANEL_DEPTH / 2,
-    ],
-    size: [PANEL_WIDTH, panelHeight, WALL_PANEL_DEPTH],
-  }),
-)
+  (_, i): Box[] => {
+    const x = -room.width / 2 + PANEL_SPACING * (i + 0.5) + (room.width % PANEL_SPACING) / 2
+    const z = backZ - WALL_PANEL_DEPTH / 2
+    const nearPort =
+      x - PANEL_WIDTH / 2 < projectionPort.right + PORT_MARGIN &&
+      x + PANEL_WIDTH / 2 > projectionPort.left - PORT_MARGIN
+    if (!nearPort) {
+      return [{ center: [x, panelCenterY, z], size: [PANEL_WIDTH, panelHeight, WALL_PANEL_DEPTH] }]
+    }
+    const lowerTop = projectionPort.bottom - PORT_MARGIN
+    const upperBottom = projectionPort.top + PORT_MARGIN
+    return [
+      {
+        center: [x, (PANEL_BOTTOM + lowerTop) / 2, z],
+        size: [PANEL_WIDTH, lowerTop - PANEL_BOTTOM, WALL_PANEL_DEPTH],
+      },
+      {
+        center: [x, (upperBottom + PANEL_TOP) / 2, z],
+        size: [PANEL_WIDTH, PANEL_TOP - upperBottom, WALL_PANEL_DEPTH],
+      },
+    ]
+  },
+).flat()
 
 const woodBoxes: Box[] = [
   {
